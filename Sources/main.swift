@@ -79,12 +79,21 @@ final class App: NSObject, NSApplicationDelegate {
             t.onFn = { [weak self, weak t] in
                 guard let self, let l = t?.layouts, self.settings.fnSwitch, systemFnUsage() == 0 else { return }
                 fnBefore = l.current()
-                selectLayout(l.source(fnBefore?.other ?? .en))
+                let target = fnBefore?.other ?? .en
+                selectLayout(l.source(target))
+                // системный индикатор у курсора показывается по нажатию Fn — ещё со старой раскладкой;
+                // свой показываем уже с новой
+                DispatchQueue.main.async { self.showLayoutBadge(target) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    dlog("Fn: \(fnBefore.map { "\($0)" } ?? "?") → \(target), стало \(l.current().map { "\($0)" } ?? "?") в \(frontAppID() ?? "?")")
+                }
             }
-            t.onFnCancel = { [weak t] in
+            t.onFnCancel = { [weak self, weak t] in
                 guard let l = t?.layouts, let back = fnBefore else { return }
                 fnBefore = nil
                 selectLayout(l.source(back))
+                self?.hint.hide()
+                dlog("Fn: сочетание — раскладка возвращена \(back)")
             }
             keyTap = t
             watchApps()
@@ -425,6 +434,11 @@ final class App: NSObject, NSApplicationDelegate {
         let def = DCSCopyTextDefinition(nil, word as CFString, CFRange(location: 0, length: (word as NSString).length))?
             .takeRetainedValue() as String?
         hint.show(def ?? "«\(word)» нет в словарях macOS.", at: anchor, width: 420, maxHeight: 320, hideAfter: nil, fontSize: 12)
+    }
+
+    /// «РУ» / «EN» у курсора после смены раскладки по Fn.
+    func showLayoutBadge(_ lang: Lang) {
+        hint.show(lang == .ru ? "РУ" : "EN", at: caretRect(), width: 60, maxHeight: 40, hideAfter: 0.8, fontSize: 13)
     }
 
     func hintSoon(_ text: String, hideAfter: TimeInterval) {
