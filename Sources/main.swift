@@ -79,21 +79,13 @@ final class App: NSObject, NSApplicationDelegate {
             t.onFn = { [weak self, weak t] in
                 guard let self, let l = t?.layouts, self.settings.fnSwitch, systemFnUsage() == 0 else { return }
                 fnBefore = l.current()
-                let target = fnBefore?.other ?? .en
-                selectLayout(l.source(target))
-                // системный индикатор у курсора показывается по нажатию Fn — ещё со старой раскладкой;
-                // свой показываем уже с новой
-                DispatchQueue.main.async { self.showLayoutBadge(target) }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    dlog("Fn: \(fnBefore.map { "\($0)" } ?? "?") → \(target), стало \(l.current().map { "\($0)" } ?? "?") в \(frontAppID() ?? "?")")
-                }
+                self.switchLayoutNatively(to: fnBefore?.other ?? .en, l)
             }
             t.onFnCancel = { [weak self, weak t] in
                 guard let l = t?.layouts, let back = fnBefore else { return }
                 fnBefore = nil
-                selectLayout(l.source(back))
-                self?.hint.hide()
-                dlog("Fn: сочетание — раскладка возвращена \(back)")
+                self?.switchLayoutNatively(to: back, l)
+                dlog("Fn: сочетание — раскладка возвращается \(back)")
             }
             keyTap = t
             watchApps()
@@ -436,9 +428,24 @@ final class App: NSObject, NSApplicationDelegate {
         hint.show(def ?? "«\(word)» нет в словарях macOS.", at: anchor, width: 420, maxHeight: 320, hideAfter: nil, fontSize: 12)
     }
 
-    /// «РУ» / «EN» у курсора после смены раскладки по Fn.
-    func showLayoutBadge(_ lang: Lang) {
-        hint.show(lang == .ru ? "РУ" : "EN", at: caretRect(), width: 60, maxHeight: 40, hideAfter: 0.8, fontSize: 13)
+    /// Смена раскладки так, как её делает сама macOS: системным сочетанием «Выбрать предыдущий источник
+    /// ввода» (⌃Пробел). При переключении через TISSelectInputSource из фоновой программы синий индикатор
+    /// «РУ/A» у поля ввода показывает прежнюю раскладку. Сочетание выключено или не сработало за 0,25 с —
+    /// переключаем напрямую.
+    func switchLayoutNatively(to target: Lang, _ l: Layouts) {
+        let caps = capsLock()
+        guard let hk = previousSourceHotkey() else {
+            selectLayout(l.source(target))
+            dlog("Fn: → \(target) напрямую (сочетание «предыдущий источник ввода» выключено)")
+            return
+        }
+        postKey(CGKeyCode(hk.code), flags: CGEventFlags(rawValue: hk.flags))
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            let native = l.current() == target
+            if !native { selectLayout(l.source(target)) }
+            if caps, !capsLock() { setCapsLock(true) }
+            dlog("Fn: → \(target) \(native ? "сочетанием macOS" : "напрямую (сочетание не сработало)"), стало \(l.current().map { "\($0)" } ?? "?") в \(frontAppID() ?? "?")")
+        }
     }
 
     func hintSoon(_ text: String, hideAfter: TimeInterval) {

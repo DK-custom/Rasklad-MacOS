@@ -159,3 +159,20 @@ func anyExcluded(_ ids: [String?], excluded: Set<String>, allowed: Set<String>) 
     let known = ids.compactMap { $0 }
     return known.isEmpty || known.contains { appExcluded($0, excluded: excluded, allowed: allowed) }
 }
+
+/// Сочетание из com.apple.symbolichotkeys: (keycode, флаги CGEvent) или nil, если выключено/не задано.
+/// parameters = (символ, keycode, модификаторы); модификаторы — те же биты, что у CGEventFlags.
+func parseHotkey(_ entry: [String: Any]) -> (code: Int, flags: UInt64)? {
+    guard (entry["enabled"] as? Int ?? (entry["enabled"] as? Bool == true ? 1 : 0)) == 1,
+          let value = entry["value"] as? [String: Any], let p = value["parameters"] as? [Int], p.count == 3,
+          p[1] != 65535 else { return nil }
+    return (p[1], UInt64(p[2]))
+}
+
+/// «Клавиатура → Сочетания клавиш → Источники ввода → Выбрать предыдущий источник ввода» (id 60), если включено.
+func previousSourceHotkey() -> (code: Int, flags: UInt64)? {
+    CFPreferencesAppSynchronize("com.apple.symbolichotkeys" as CFString)
+    let all = CFPreferencesCopyAppValue("AppleSymbolicHotKeys" as CFString, "com.apple.symbolichotkeys" as CFString)
+        as? [String: Any]
+    return (all?["60"] as? [String: Any]).flatMap(parseHotkey)
+}

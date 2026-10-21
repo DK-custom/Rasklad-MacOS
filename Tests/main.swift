@@ -381,6 +381,16 @@ check(anyExcluded(["com.apple.Notes", "com.apple.Terminal"], excluded: [], allow
 check(anyExcluded(["com.apple.Notes", nil], excluded: [], allowed: []) ? "не править" : "править", "править")
 check(anyExcluded([nil, nil], excluded: [], allowed: []) ? "не править" : "править", "не править")
 
+// Системное сочетание «Выбрать предыдущий источник ввода»: из настроек symbolichotkeys
+do {
+    let on: [String: Any] = ["enabled": 1, "value": ["parameters": [32, 49, 262144], "type": "standard"]]
+    let off: [String: Any] = ["enabled": 0, "value": ["parameters": [32, 49, 262144], "type": "standard"]]
+    check(parseHotkey(on).map { "\($0.code) \(String($0.flags, radix: 16))" } ?? "nil", "49 40000")  // ⌃Пробел
+    check(parseHotkey(off).map { "\($0.code)" } ?? "nil", "nil")
+    check(parseHotkey([:]).map { "\($0.code)" } ?? "nil", "nil")
+    check(parseHotkey(["enabled": 1, "value": ["parameters": [65535, 65535, 0]]]).map { "\($0.code)" } ?? "nil", "nil") // не задано
+}
+
 // Место запуска: только «Программы» — иначе автозагрузка запомнит временный путь
 check(isProperInstallPath("/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")
 check(isProperInstallPath("/Users/u/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")
