@@ -38,6 +38,8 @@ Menu bar утилита для macOS, замена Punto Switcher. Swift, без
 
 - 1.5–1.6: «Забыть выученное слово…» (только `hasLearnedWord`, словарные не трогает; списка выученных macOS не отдаёт). Меню по разделам: Правка / Выделенный текст (рабочие пункты с клавишей в названии) / Клавиши / Слова / служебное с версией. `Rasklad --menu-dump` — структура меню текстом.
 
+- GitHub: https://github.com/DK-custom/Rasklad (публичный, ветка main, лицензия MIT + NOTICE для FOLDOC). Отправка: `git -c credential.helper= -c "credential.helper=!$HOME/Developer/bin/gh auth git-credential" push` (gh 2.102.0 в `~/Developer/bin`, вход DK-custom; глобальный git не настроен).
+
 ## Файлы
 - `Sources/Layouts.swift` — таблицы RU/EN из системных раскладок (UCKeyTranslate), конвертация.
 - `Sources/Detector.swift` — правило замены, тап правого ⌥.
