@@ -357,6 +357,30 @@ do {
     check(t.ambiguousPrev == nil ? "нет" : "есть", "нет")
 }
 
+// Fn: переключаем при нажатии (индикатор «РУ/A» у курсора показывает раскладку сразу),
+// а если, пока Fn зажата, нажали другую клавишу или модификатор (Fn+стрелка) — откат
+do {
+    func seq(_ steps: [(Int, UInt64)?]) -> String {
+        var f = FnPress(), out: [String] = []
+        for s in steps {
+            let e = s.map { f.flagsChanged(code: $0.0, flags: $0.1) } ?? f.other()
+            if let e { out.append("\(e)") }
+        }
+        return out.joined(separator: ",")
+    }
+    check(seq([(63, 0x800100), (63, 0x100)]), "down")                       // просто Fn
+    check(seq([(63, 0x800100), nil, (63, 0x100)]), "down,cancel")           // Fn+стрелка
+    check(seq([(63, 0x800100), (55, 0x900108), (63, 0x100108)]), "down,cancel") // Fn+⌘
+    check(seq([(55, 0x100108), (63, 0x900108), (63, 0x100108)]), "")        // ⌘ уже зажат — не Fn
+    check(seq([(63, 0x800100), nil, nil, (63, 0x100)]), "down,cancel")      // откат один раз
+}
+
+// Исключение приложения: если хоть один источник говорит «исключено» — не правим; не знаем приложение — не правим
+check(anyExcluded([nil, "com.apple.Terminal"], excluded: [], allowed: []) ? "не править" : "править", "не править")
+check(anyExcluded(["com.apple.Notes", "com.apple.Terminal"], excluded: [], allowed: []) ? "не править" : "править", "не править")
+check(anyExcluded(["com.apple.Notes", nil], excluded: [], allowed: []) ? "не править" : "править", "править")
+check(anyExcluded([nil, nil], excluded: [], allowed: []) ? "не править" : "править", "не править")
+
 // Место запуска: только «Программы» — иначе автозагрузка запомнит временный путь
 check(isProperInstallPath("/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")
 check(isProperInstallPath("/Users/u/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")

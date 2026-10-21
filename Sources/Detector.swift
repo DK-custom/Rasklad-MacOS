@@ -372,3 +372,29 @@ func forgetLearnedWord(_ raw: String) -> ForgetResult {
     sc.unlearnWord(word)
     return sc.hasLearnedWord(word) ? .failed : .forgotten
 }
+
+/// Fn/🌐: переключаем раскладку при нажатии — индикатор «РУ/A» у курсора показывается сразу и иначе
+/// показал бы прежнюю. Если, пока Fn зажата, нажали другую клавишу или модификатор (Fn+стрелка, Fn+⌘) —
+/// это сочетание, а не смена языка: `.cancel`, раскладку вернуть.
+struct FnPress {
+    enum Event { case down, cancel }
+    private var held = false
+    private static let fnBit: UInt64 = 0x800000
+    private static let others: UInt64 = 0x40000 | 0x100000 | 0x80000 // ⌃ ⌘ ⌥
+
+    mutating func flagsChanged(code: Int, flags: UInt64) -> Event? {
+        if code == 63 {
+            let down = flags & Self.fnBit != 0
+            held = down && flags & Self.others == 0
+            return held ? .down : nil
+        }
+        return other()
+    }
+
+    /// Клавиша, клик или другой модификатор: если Fn зажата и раскладку уже сменили — откат.
+    mutating func other() -> Event? {
+        guard held else { return nil }
+        held = false
+        return .cancel
+    }
+}

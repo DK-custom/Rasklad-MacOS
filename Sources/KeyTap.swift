@@ -13,6 +13,8 @@ final class KeyTap {
     let settings: Settings
     var onRightOption: (ModifierTap.Kind) -> Void = { _ in }
     var onFn: () -> Void = {}
+    /// Fn оказалась частью сочетания (Fn+стрелка) — вернуть раскладку.
+    var onFnCancel: () -> Void = {}
     var onFix: (_ typed: String, _ fixed: String) -> Void = { _, _ in }
     /// remembered — слово добавлено в исключения (вторая отмена), иначе только возвращено.
     var onUndo: (_ typed: String, _ remembered: Bool) -> Void = { _, _ in }
@@ -22,9 +24,10 @@ final class KeyTap {
     private var typing = TypingState()
     private var keys: [Int] { typing.keys }
     private var lastSkip: String?
+    private var lastAppPair: String?
     private var lastFix: (typed: String, from: Lang, text: String)? // для отмены, живёт до следующей клавиши
     var correctionKey: CorrectionKey = .rightOption { didSet { ropt = correctionKey.tap } }
-    private var ropt = ModifierTap.rightOption, fn = ModifierTap.fn
+    private var ropt = ModifierTap.rightOption, fnPress = FnPress()
     private var tap: CFMachPort?
     var running: Bool { tap.map { CGEvent.tapIsEnabled(tap: $0) } ?? false }
 
@@ -66,11 +69,7 @@ final class KeyTap {
             lastFix = nil
             ropt.other()
             let code = Int(e.getIntegerValueField(.keyboardEventKeycode))
-            if type == .flagsChanged, fn.flagsChanged(code: code, flags: e.flags.rawValue) != nil {
-                DispatchQueue.main.async { self.onFn() }
-            } else if type != .flagsChanged {
-                fn.other()
-            }
+            fnEvent(type == .flagsChanged ? fnPress.flagsChanged(code: code, flags: e.flags.rawValue) : fnPress.other())
             return
         }
         let code = Int(e.getIntegerValueField(.keyboardEventKeycode))
@@ -79,13 +78,11 @@ final class KeyTap {
             if let kind = ropt.flagsChanged(code: code, flags: e.flags.rawValue) {
                 DispatchQueue.main.async { self.onRightOption(kind) }
             }
-            if fn.flagsChanged(code: code, flags: e.flags.rawValue) != nil {
-                DispatchQueue.main.async { self.onFn() }
-            }
+            fnEvent(fnPress.flagsChanged(code: code, flags: e.flags.rawValue))
             return
         }
         ropt.other()
-        fn.other()
+        fnEvent(fnPress.other())
         lastFix = nil
         onActivity(type != .keyDown)
         guard type == .keyDown else { typing.reset(); return } // клик мышью — курсор мог уйти
@@ -101,6 +98,14 @@ final class KeyTap {
         }
     }
 
+    private func fnEvent(_ e: FnPress.Event?) {
+        switch e {
+        case .down: onFn()          // сразу, в момент нажатия: индикатор у курсора покажет уже новую раскладку
+        case .cancel: DispatchQueue.main.async { self.onFnCancel() }
+        case nil: break
+        }
+    }
+
     /// Почему слово сейчас нельзя править как текст: поле — редактор кода или курсор внутри ``` / `…`.
     private func codeReason() -> String? {
         let ctx = focusedFieldContext()
@@ -113,8 +118,12 @@ final class KeyTap {
     /// В коде (IDE и терминалы, редакторы кода, ``` и `…`) не правим — только ручная клавиша исправления.
     /// Возвращает язык, на котором оказалось слово (язык фразы для следующих), и неоднозначно ли оно.
     private func check() -> (Lang?, Bool) {
+        // приложение — заново, без кеша; исключено, если так говорит владелец поля ввода или macOS
+        let ids = [inputApp(fresh: true)?.bundleIdentifier, NSWorkspace.shared.frontmostApplication?.bundleIdentifier]
+        let pair = ids[0] == ids[1] ? nil : "поле ввода \(ids[0] ?? "?"), активное \(ids[1] ?? "?")"
+        if pair != lastAppPair { if let pair { dlog("приложение: \(pair)") }; lastAppPair = pair }
         guard !keys.isEmpty, let cur = layouts.current(),
-              !settings.isExcluded(frontAppID() ?? "") else { return (nil, false) }
+              !anyExcluded(ids, excluded: settings.excludedApps, allowed: settings.allowedApps) else { return (nil, false) }
         let why = settings.protectCode ? codeReason() : nil
         let note = why.map { "\($0) в \(frontAppID() ?? "?")" }
         if note != lastSkip { // в лог — только смена причины, без слов
@@ -193,9 +202,9 @@ final class KeyTap {
 /// Приложение, в которое сейчас идёт ввод. NSWorkspace.frontmostApplication после блокировки экрана
 /// может так и остаться «loginwindow», поэтому берём владельца фокусного элемента через Accessibility.
 /// Проверка идёт на каждом нажатии — кешируем на 0,3 с.
-func inputApp() -> NSRunningApplication? {
+func inputApp(fresh: Bool = false) -> NSRunningApplication? {
     let now = Date()
-    if now.timeIntervalSince(frontCache.at) < 0.3 { return frontCache.app }
+    if !fresh, now.timeIntervalSince(frontCache.at) < 0.3 { return frontCache.app }
     var app = NSWorkspace.shared.frontmostApplication
     let sys = AXUIElementCreateSystemWide()
     AXUIElementSetMessagingTimeout(sys, 0.1)

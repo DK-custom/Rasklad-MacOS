@@ -40,6 +40,8 @@ Menu bar утилита для macOS, замена Punto Switcher. Swift, без
 
 - GitHub: https://github.com/DK-custom/Rasklad (публичный, ветка main, лицензия MIT + NOTICE для FOLDOC). Выпуск v1.6.1 с DMG и ZIP: https://github.com/DK-custom/Rasklad/releases/tag/v1.6.1 (новый: `./build.sh dist`, затем `gh release create vX --repo DK-custom/Rasklad build/Rasklad.dmg build/Rasklad.zip`). Отправка: `git -c credential.helper= -c "credential.helper=!$HOME/Developer/bin/gh auth git-credential" push` (gh 2.102.0 в `~/Developer/bin`, вход DK-custom; глобальный git не настроен).
 
+- 1.6.3: Fn переключает при нажатии (`FnPress`; индикатор «РУ/A» у курсора показывал прежнюю раскладку, когда переключали при отпускании), Fn+клавиша/модификатор — откат. Исключение приложения — по двум источникам (`anyExcluded`: владелец поля ввода без кеша и NSWorkspace), неизвестное приложение — не правим (в 1.6.1 была замена в исключённом Терминале). Не проверено вживую.
+
 ## Файлы
 - `Sources/Layouts.swift` — таблицы RU/EN из системных раскладок (UCKeyTranslate), конвертация.
 - `Sources/Detector.swift` — правило замены, тап правого ⌥.

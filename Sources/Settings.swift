@@ -152,3 +152,10 @@ func rotateLog(_ url: URL, limit: Int) {
     try? fm.removeItem(at: old)
     try? fm.moveItem(at: url, to: old)
 }
+
+/// Исключено, если так говорит хоть один источник (владелец поля ввода, активное приложение macOS);
+/// если приложение определить не удалось — тоже не правим.
+func anyExcluded(_ ids: [String?], excluded: Set<String>, allowed: Set<String>) -> Bool {
+    let known = ids.compactMap { $0 }
+    return known.isEmpty || known.contains { appExcluded($0, excluded: excluded, allowed: allowed) }
+}

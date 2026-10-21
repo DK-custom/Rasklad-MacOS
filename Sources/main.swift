@@ -74,9 +74,17 @@ final class App: NSObject, NSApplicationDelegate {
             }
             // Fn/🌐: мгновенная смена RU↔EN без системного окна и задержки.
             // Пока у 🌐 есть системное действие (смена источника, эмодзи, диктовка), молчим: иначе сработают оба.
+            // Переключаем в момент нажатия Fn; если это было сочетание (Fn+стрелка) — возвращаем прежнюю.
+            var fnBefore: Lang?
             t.onFn = { [weak self, weak t] in
                 guard let self, let l = t?.layouts, self.settings.fnSwitch, systemFnUsage() == 0 else { return }
-                selectLayout(l.source(l.current()?.other ?? .en))
+                fnBefore = l.current()
+                selectLayout(l.source(fnBefore?.other ?? .en))
+            }
+            t.onFnCancel = { [weak t] in
+                guard let l = t?.layouts, let back = fnBefore else { return }
+                fnBefore = nil
+                selectLayout(l.source(back))
             }
             keyTap = t
             watchApps()
@@ -156,6 +164,7 @@ final class App: NSObject, NSApplicationDelegate {
             self.frontApp = app
             self.updateAppItem()
             if let l = self.keyTap?.layouts, let lang = self.settings.appLayouts[id].flatMap(Lang.init), lang != l.current() {
+                dlog("раскладка приложения \(id): \(lang)")
                 selectLayout(l.source(lang))
             }
         }
