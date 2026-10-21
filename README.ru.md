@@ -71,5 +71,5 @@ python3 -I ItDict/test_build.py        # тест сборщика словар�
 
 ## Лицензия
 
-Код — MIT (см. [LICENSE](LICENSE)). `ItDict/foldoc/Dictionary.txt` — FOLDOC, © Denis Howe,
+Код — MIT (см. [LICENSE](LICENSE)); сторонние материалы — [NOTICE](NOTICE). `ItDict/foldoc/Dictionary.txt` — FOLDOC, © Denis Howe,
 GNU Free Documentation License 1.1+.

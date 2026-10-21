@@ -70,5 +70,5 @@ dictionaries and typo fixing to Windows; [PROJECT_STATE.md](PROJECT_STATE.md) �
 
 ## License
 
-Code — MIT (see [LICENSE](LICENSE)). `ItDict/foldoc/Dictionary.txt` — FOLDOC, © Denis Howe,
+Code — MIT (see [LICENSE](LICENSE)); third-party content — [NOTICE](NOTICE). `ItDict/foldoc/Dictionary.txt` — FOLDOC, © Denis Howe,
 GNU Free Documentation License 1.1+.
