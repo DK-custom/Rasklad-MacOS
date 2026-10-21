@@ -1,0 +1,43 @@
+@charset "UTF-8";
+@namespace d url(http://www.apple.com/DTDs/DictionaryService-1.0.rng);
+
+/* Цвета — системные (DCSDictionaryUseSystemAppearance), поэтому светлая и тёмная темы работают сами. */
+:root { color-scheme: light dark; }
+
+body {
+	font-family: -apple-system, sans-serif;
+	color: CanvasText;
+}
+
+/* свои классы, а не d|entry: селекторы с пространством имён в просмотре не срабатывают */
+h1.it-head {
+	font-size: 1.1em;
+	font-weight: 700;
+	margin: 0 0 0.3em 0;
+}
+
+.alias {
+	font-weight: normal;
+	font-size: 0.85em;
+	color: GrayText;
+}
+
+p.it-p {
+	margin: 0 0 0.45em 0;
+	line-height: 1.35;
+}
+
+.cat {
+	font-style: italic;
+	color: GrayText;
+}
+
+.date {
+	font-size: 0.8em;
+	color: GrayText;
+}
+
+a {
+	color: -apple-system-control-accent;
+	text-decoration: none;
+}
