@@ -128,16 +128,26 @@ func hintOrigin(size: CGSize, anchor: CGRect, screen: CGRect) -> CGPoint {
     return CGPoint(x: x, y: max(y, screen.minY + margin))
 }
 
-/// Прямоугольник выделения или символа перед курсором в фокусном поле (координаты Cocoa)
-/// через Accessibility; nil — приложение не отдаёт (часто Electron, терминалы).
-func caretRect() -> CGRect? {
-    let sys = AXUIElementCreateSystemWide()
-    AXUIElementSetMessagingTimeout(sys, 0.2) // зависшее приложение не должно вешать нас
-    var focused: CFTypeRef?
-    guard AXUIElementCopyAttributeValue(sys, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-          let f = focused, CFGetTypeID(f) == AXUIElementGetTypeID() else { return nil }
-    let el = f as! AXUIElement
-    AXUIElementSetMessagingTimeout(el, 0.2) // таймаут системного элемента на поле не переносится
+/// Где показать подсказку: у курсора; приложение не отдаёт позицию курсора — над полем ввода;
+/// nil — не отдаёт и поле (тогда подсказка у мыши). Координаты Cocoa.
+func inputAnchor() -> (rect: CGRect, kind: String)? {
+    guard let el = axFocusedElement() else { return nil }
+    AXUIElementSetMessagingTimeout(el, 0.2)
+    if let r = caretBounds(el) { return (r, "у курсора") }
+    // Electron (этот чат, Slack…) отдаёт позицию курсора, только если у приложения включён доступ
+    if enableAppAccessibility(el), let r = caretBounds(el) { return (r, "у курсора") }
+    if let f = elementFrame(el) {
+        return (CGRect(x: f.minX + 8, y: f.maxY - 20, width: 2, height: 20), "у поля") // верхний край поля
+    }
+    return nil
+}
+
+func caretRect() -> CGRect? { inputAnchor()?.rect }
+
+private let axTop = { NSScreen.screens.first?.frame.maxY ?? 0 } // AX: начало координат слева сверху основного экрана
+
+/// Прямоугольник символа перед курсором (или выделения).
+private func caretBounds(_ el: AXUIElement) -> CGRect? {
     var rangeRef: CFTypeRef?
     var range = CFRange()
     guard AXUIElementCopyAttributeValue(el, kAXSelectedTextRangeAttribute as CFString, &rangeRef) == .success,
@@ -151,8 +161,32 @@ func caretRect() -> CGRect? {
           let br = boundsRef, CFGetTypeID(br) == AXValueGetTypeID(),
           AXValueGetValue(br as! AXValue, .cgRect, &r),
           r.height > 0, r.origin != .zero else { return nil }
-    let top = NSScreen.screens.first?.frame.maxY ?? 0 // AX: начало координат слева сверху основного экрана
-    return CGRect(x: r.minX, y: top - r.maxY, width: r.width, height: r.height)
+    return CGRect(x: r.minX, y: axTop() - r.maxY, width: r.width, height: r.height)
+}
+
+/// Рамка поля ввода.
+private func elementFrame(_ el: AXUIElement) -> CGRect? {
+    var p: CFTypeRef?, sz: CFTypeRef?
+    var origin = CGPoint.zero, size = CGSize.zero
+    guard AXUIElementCopyAttributeValue(el, kAXPositionAttribute as CFString, &p) == .success,
+          AXUIElementCopyAttributeValue(el, kAXSizeAttribute as CFString, &sz) == .success,
+          let pv = p, let sv = sz, CFGetTypeID(pv) == AXValueGetTypeID(), CFGetTypeID(sv) == AXValueGetTypeID(),
+          AXValueGetValue(pv as! AXValue, .cgPoint, &origin), AXValueGetValue(sv as! AXValue, .cgSize, &size),
+          size.width > 0, size.height > 0, origin != .zero else { return nil }
+    return CGRect(x: origin.x, y: axTop() - origin.y - size.height, width: size.width, height: size.height)
+}
+
+/// Electron-приложения строят дерево Accessibility только по просьбе (AXManualAccessibility).
+/// true — включили сейчас (раз на процесс), стоит повторить запрос.
+private var accessibilityEnabledPIDs: Set<pid_t> = []
+
+private func enableAppAccessibility(_ el: AXUIElement) -> Bool {
+    var pid: pid_t = 0
+    guard AXUIElementGetPid(el, &pid) == .success, !accessibilityEnabledPIDs.contains(pid) else { return false }
+    accessibilityEnabledPIDs.insert(pid)
+    let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, 0.2)
+    return AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue) == .success
 }
 
 /// Фокусное поле через Accessibility: текст перед курсором (до 4000 символов; nil — приложение не отдаёт)

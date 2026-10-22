@@ -61,7 +61,7 @@ final class App: NSObject, NSApplicationDelegate {
             // Подсказка у слова: после retype поле ещё не обновилось — даём ему мгновение.
             t.onFix = { [weak self] typed, fixed in
                 guard let self else { return }
-                self.hintSoon("\(typed) → \(fixed)   \(self.settings.correctionKey.short) — отменить", hideAfter: 2)
+                self.hintSoon("\(typed) → \(fixed)", hideAfter: 2)
             }
             t.onUndo = { [weak self] typed, remembered in
                 self?.hintSoon(remembered ? "↩ \(typed)   больше не меняю — в исключениях"
@@ -450,9 +450,9 @@ final class App: NSObject, NSApplicationDelegate {
 
     func hintSoon(_ text: String, hideAfter: TimeInterval) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [self] in
-            let caret = caretRect()
-            dlog("подсказка: \(caret == nil ? "у мыши" : "у курсора") в \(frontAppID() ?? "?")")
-            hint.show(text, at: caret, width: 360, maxHeight: 60, hideAfter: hideAfter)
+            let anchor = inputAnchor()
+            dlog("подсказка: \(anchor?.kind ?? "у мыши") в \(frontAppID() ?? "?")")
+            hint.show(text, at: anchor?.rect, width: 360, maxHeight: 60, hideAfter: hideAfter)
         }
     }
 
