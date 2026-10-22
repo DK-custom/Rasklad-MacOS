@@ -176,3 +176,10 @@ func previousSourceHotkey() -> (code: Int, flags: UInt64)? {
         as? [String: Any]
     return (all?["60"] as? [String: Any]).flatMap(parseHotkey)
 }
+
+/// Нажимать ли ⌘C, чтобы взять выделенное. Ответ поля «ничего не выделено» верен не везде
+/// (Electron и браузеры часто так отвечают и при выделении), поэтому верим ему только в IDE и терминалах:
+/// там ⌘C без выделения копирует всю строку.
+func shouldCopySelection(axSelected: String?, codeApp: Bool) -> Bool {
+    codeApp ? axSelected?.isEmpty == false : true
+}

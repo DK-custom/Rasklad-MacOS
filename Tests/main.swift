@@ -391,6 +391,13 @@ do {
     check(parseHotkey(["enabled": 1, "value": ["parameters": [65535, 65535, 0]]]).map { "\($0.code)" } ?? "nil", "nil") // не задано
 }
 
+// Нажимать ли ⌘C для конвертации/определения выделенного
+check(shouldCopySelection(axSelected: "", codeApp: false) ? "да" : "нет", "да")      // Electron/браузер часто врут «ничего»
+check(shouldCopySelection(axSelected: nil, codeApp: false) ? "да" : "нет", "да")
+check(shouldCopySelection(axSelected: "", codeApp: true) ? "да" : "нет", "нет")      // IDE: ⌘C без выделения копирует строку
+check(shouldCopySelection(axSelected: nil, codeApp: true) ? "да" : "нет", "нет")
+check(shouldCopySelection(axSelected: "x", codeApp: true) ? "да" : "нет", "да")
+
 // Место запуска: только «Программы» — иначе автозагрузка запомнит временный путь
 check(isProperInstallPath("/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")
 check(isProperInstallPath("/Users/u/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")

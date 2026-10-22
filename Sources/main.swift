@@ -377,10 +377,15 @@ final class App: NSObject, NSApplicationDelegate {
         let el = axFocusedElement()
         if let sel = axSelectedText(el), !sel.isEmpty {
             let (out, src) = converted(sel)
-            if axReplaceSelection(el, with: out) { selectLayout(src); return }
+            if axReplaceSelection(el, with: out) {
+                selectLayout(src)
+                dlog("конвертация: заменено напрямую в \(frontAppID() ?? "?")")
+                return
+            }
         }
-        guard selectionMayExist(el) else { return }
+        guard selectionMayExist(el) else { dlog("конвертация: ничего не выделено в \(frontAppID() ?? "?")"); return }
         copySelection { [self] text, pb, saved in
+            dlog("конвертация: через буфер обмена в \(frontAppID() ?? "?")")
             let (out, src) = converted(text)
             pb.clearContents()
             pb.setString(out, forType: .string)
@@ -410,8 +415,7 @@ final class App: NSObject, NSApplicationDelegate {
     /// Нажимать ли ⌘C: если поле говорит «ничего не выделено» — нет. В IDE и терминалах ⌘C без выделения
     /// копирует всю строку, поэтому там — только когда поле подтвердило выделение.
     func selectionMayExist(_ el: AXUIElement?) -> Bool {
-        if let sel = axSelectedText(el) { return !sel.isEmpty }
-        return !isCodeApp(frontAppID() ?? "")
+        shouldCopySelection(axSelected: axSelectedText(el), codeApp: isCodeApp(frontAppID() ?? ""))
     }
 
     let hint = Hint()
@@ -462,8 +466,11 @@ final class App: NSObject, NSApplicationDelegate {
         let saved = snapshot(pb)
         let before = pb.changeCount
         postKey(CGKeyCode(kVK_ANSI_C), flags: .maskCommand)
-        waitForChange(pb, since: before, tries: 15) { copied in
-            guard copied, let text = pb.string(forType: .string), !text.isEmpty else { return } // ничего не выделено
+        waitForChange(pb, since: before, tries: 30) { copied in   // до 0,6 с: медленные приложения копируют не сразу
+            guard copied, let text = pb.string(forType: .string), !text.isEmpty else {
+                dlog("выделенное: ⌘C ничего не скопировал в \(frontAppID() ?? "?")")
+                return
+            }
             done(text, pb, saved)
         }
     }

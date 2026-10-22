@@ -286,13 +286,22 @@ func axSelectedText(_ el: AXUIElement?) -> String? {
     return v as? String
 }
 
-/// Заменить выделение напрямую, без буфера обмена; false — поле так не умеет.
+/// Заменить выделение напрямую, без буфера обмена; false — поле так не умеет или не изменилось.
+/// Chromium/Electron могут ответить «готово» и не поменять текст, поэтому сверяем значение поля
+/// до и после; не можем прочитать значение — не доверяем.
 func axReplaceSelection(_ el: AXUIElement?, with s: String) -> Bool {
     guard let el else { return false }
     var settable: DarwinBoolean = false
     guard AXUIElementIsAttributeSettable(el, kAXSelectedTextAttribute as CFString, &settable) == .success,
           settable.boolValue else { return false }
-    return AXUIElementSetAttributeValue(el, kAXSelectedTextAttribute as CFString, s as CFString) == .success
+    func value() -> String? {
+        var v: CFTypeRef?
+        return AXUIElementCopyAttributeValue(el, kAXValueAttribute as CFString, &v) == .success ? v as? String : nil
+    }
+    guard let before = value(),
+          AXUIElementSetAttributeValue(el, kAXSelectedTextAttribute as CFString, s as CFString) == .success,
+          let after = value() else { return false }
+    return after != before || axSelectedText(el) == s // значение могло ещё не обновиться, а выделение — уже новое
 }
 
 /// Приложение, в которое сейчас идёт ввод. NSWorkspace.frontmostApplication после блокировки экрана
