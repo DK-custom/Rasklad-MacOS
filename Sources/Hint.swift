@@ -119,10 +119,10 @@ final class Hint: NSObject, WKNavigationDelegate {
     func contains(_ p: NSPoint) -> Bool { panel.isVisible && panel.frame.contains(p) }
 }
 
-/// Над словом; у верхнего края — под ним; по горизонтали прижать внутрь экрана.
+/// По центру над курсором; у верхнего края — под ним; по горизонтали прижать внутрь экрана.
 func hintOrigin(size: CGSize, anchor: CGRect, screen: CGRect) -> CGPoint {
     let gap: CGFloat = 6, margin: CGFloat = 4
-    let x = min(max(anchor.minX, screen.minX + margin), screen.maxX - size.width - margin)
+    let x = min(max(anchor.midX - size.width / 2, screen.minX + margin), screen.maxX - size.width - margin)
     var y = anchor.maxY + gap
     if y + size.height > screen.maxY - margin { y = anchor.minY - gap - size.height }
     return CGPoint(x: x, y: max(y, screen.minY + margin))
