@@ -140,6 +140,7 @@ func inputAnchor() -> (rect: CGRect?, kind: String) {
     let el = focusedElement(of: app)
     if let el {
         if let r = caretBounds(el) { return (r, "у курсора") }
+        if let r = caretBoundsByMarker(el) { return (r, "у курсора (маркер)") }
         if let f = elementFrame(el) { return (CGRect(x: f.minX + 8, y: f.maxY - 20, width: 2, height: 20), "у поля") }
     }
     if let w = focusedWindowFrame(of: app) {   // нижний край окна, отступ как у поля ввода
@@ -184,6 +185,21 @@ private func caretBounds(_ el: AXUIElement) -> CGRect? {
           AXValueGetValue(br as! AXValue, .cgRect, &r),
           r.height > 0, r.origin != .zero else { return nil }
     return CGRect(x: r.minX, y: axTop() - r.maxY, width: r.width, height: r.height)
+}
+
+/// Курсор через текстовые маркеры: так его отдают Chromium/Electron и Safari, когда номер символа
+/// (kAXSelectedTextRange) не работает — например, в редактируемых полях веб-страниц.
+private func caretBoundsByMarker(_ el: AXUIElement) -> CGRect? {
+    var marker: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(el, "AXSelectedTextMarkerRange" as CFString, &marker) == .success,
+          let m = marker else { return nil }
+    var boundsRef: CFTypeRef?
+    var r = CGRect.zero
+    guard AXUIElementCopyParameterizedAttributeValue(el, "AXBoundsForTextMarkerRange" as CFString, m, &boundsRef) == .success,
+          let br = boundsRef, CFGetTypeID(br) == AXValueGetTypeID(),
+          AXValueGetValue(br as! AXValue, .cgRect, &r),
+          r.height > 0, r.origin != .zero else { return nil }
+    return CGRect(x: r.minX, y: axTop() - r.maxY, width: max(r.width, 1), height: r.height)
 }
 
 /// Рамка поля ввода.
