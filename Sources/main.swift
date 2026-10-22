@@ -451,8 +451,8 @@ final class App: NSObject, NSApplicationDelegate {
     func hintSoon(_ text: String, hideAfter: TimeInterval) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [self] in
             let anchor = inputAnchor()
-            dlog("подсказка: \(anchor?.kind ?? "у мыши") в \(frontAppID() ?? "?")")
-            hint.show(text, at: anchor?.rect, width: 360, maxHeight: 60, hideAfter: hideAfter)
+            dlog("подсказка: \(anchor.kind) в \(frontAppID() ?? "?")")
+            hint.show(text, at: anchor.rect, width: 360, maxHeight: 60, hideAfter: hideAfter)
         }
     }
 

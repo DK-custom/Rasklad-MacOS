@@ -199,30 +199,6 @@ final class KeyTap {
     }
 }
 
-/// Приложение, в которое сейчас идёт ввод. NSWorkspace.frontmostApplication после блокировки экрана
-/// может так и остаться «loginwindow», поэтому берём владельца фокусного элемента через Accessibility.
-/// Проверка идёт на каждом нажатии — кешируем на 0,3 с.
-func inputApp(fresh: Bool = false) -> NSRunningApplication? {
-    let now = Date()
-    if !fresh, now.timeIntervalSince(frontCache.at) < 0.3 { return frontCache.app }
-    var app = NSWorkspace.shared.frontmostApplication
-    let sys = AXUIElementCreateSystemWide()
-    AXUIElementSetMessagingTimeout(sys, 0.1)
-    var ref: CFTypeRef?
-    if AXUIElementCopyAttributeValue(sys, kAXFocusedApplicationAttribute as CFString, &ref) == .success,
-       let r = ref, CFGetTypeID(r) == AXUIElementGetTypeID() {
-        var pid: pid_t = 0
-        if AXUIElementGetPid(r as! AXUIElement, &pid) == .success, let a = NSRunningApplication(processIdentifier: pid) {
-            app = a
-        }
-    }
-    frontCache = (now, app)
-    return app
-}
-
-private var frontCache: (at: Date, app: NSRunningApplication?) = (.distantPast, nil)
-
-func frontAppID() -> String? { inputApp()?.bundleIdentifier }
 
 private func tagged(_ e: CGEvent?, _ flags: CGEventFlags) -> CGEvent? {
     e?.flags = flags // явно: удерживаемые пользователем модификаторы не примешиваются

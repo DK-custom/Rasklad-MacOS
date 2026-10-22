@@ -128,21 +128,43 @@ func hintOrigin(size: CGSize, anchor: CGRect, screen: CGRect) -> CGPoint {
     return CGPoint(x: x, y: max(y, screen.minY + margin))
 }
 
-/// Где показать подсказку: у курсора; приложение не отдаёт позицию курсора — над полем ввода;
-/// nil — не отдаёт и поле (тогда подсказка у мыши). Координаты Cocoa.
-func inputAnchor() -> (rect: CGRect, kind: String)? {
-    guard let el = axFocusedElement() else { return nil }
-    AXUIElementSetMessagingTimeout(el, 0.2)
-    if let r = caretBounds(el) { return (r, "у курсора") }
-    // Electron (этот чат, Slack…) отдаёт позицию курсора, только если у приложения включён доступ
-    if enableAppAccessibility(el), let r = caretBounds(el) { return (r, "у курсора") }
-    if let f = elementFrame(el) {
-        return (CGRect(x: f.minX + 8, y: f.maxY - 20, width: 2, height: 20), "у поля") // верхний край поля
+/// Где показать подсказку. По порядку: у курсора; над полем ввода; у нижнего края окна приложения
+/// (там обычно поле ввода чата); nil — у мыши. Electron (этот чат, Slack) не сообщает системе фокус и курсор,
+/// пока у приложения не включён доступ (AXManualAccessibility), — включаем и спрашиваем у самого приложения.
+/// kind — для журнала: где оказалась подсказка или почему у мыши.
+func inputAnchor() -> (rect: CGRect?, kind: String) {
+    guard let pid = inputApp()?.processIdentifier else { return (nil, "у мыши (приложение не определено)") }
+    let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, 0.2)
+    _ = enableAppAccessibility(app, pid)   // дерево строится не сразу: с первой подсказки — у окна, дальше у курсора
+    let el = focusedElement(of: app)
+    if let el {
+        if let r = caretBounds(el) { return (r, "у курсора") }
+        if let f = elementFrame(el) { return (CGRect(x: f.minX + 8, y: f.maxY - 20, width: 2, height: 20), "у поля") }
     }
-    return nil
+    if let w = focusedWindowFrame(of: app) {   // нижний край окна, отступ как у поля ввода
+        return (CGRect(x: w.minX + 24, y: w.minY + 24, width: 2, height: 20), el == nil ? "у окна (нет фокуса)" : "у окна")
+    }
+    return (nil, el == nil ? "у мыши (нет фокуса)" : "у мыши (нет рамки поля)")
 }
 
-func caretRect() -> CGRect? { inputAnchor()?.rect }
+private func focusedElement(of app: AXUIElement) -> AXUIElement? {
+    var f: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(app, kAXFocusedUIElementAttribute as CFString, &f) == .success,
+          let v = f, CFGetTypeID(v) == AXUIElementGetTypeID() else { return nil }
+    let el = v as! AXUIElement
+    AXUIElementSetMessagingTimeout(el, 0.2)
+    return el
+}
+
+private func focusedWindowFrame(of app: AXUIElement) -> CGRect? {
+    var w: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &w) == .success,
+          let v = w, CFGetTypeID(v) == AXUIElementGetTypeID() else { return nil }
+    return elementFrame(v as! AXUIElement)
+}
+
+func caretRect() -> CGRect? { inputAnchor().rect }
 
 private let axTop = { NSScreen.screens.first?.frame.maxY ?? 0 } // AX: начало координат слева сверху основного экрана
 
@@ -177,15 +199,12 @@ private func elementFrame(_ el: AXUIElement) -> CGRect? {
 }
 
 /// Electron-приложения строят дерево Accessibility только по просьбе (AXManualAccessibility).
-/// true — включили сейчас (раз на процесс), стоит повторить запрос.
+/// true — включили сейчас (раз на процесс).
 private var accessibilityEnabledPIDs: Set<pid_t> = []
 
-private func enableAppAccessibility(_ el: AXUIElement) -> Bool {
-    var pid: pid_t = 0
-    guard AXUIElementGetPid(el, &pid) == .success, !accessibilityEnabledPIDs.contains(pid) else { return false }
+private func enableAppAccessibility(_ app: AXUIElement, _ pid: pid_t) -> Bool {
+    guard !accessibilityEnabledPIDs.contains(pid) else { return false }
     accessibilityEnabledPIDs.insert(pid)
-    let app = AXUIElementCreateApplication(pid)
-    AXUIElementSetMessagingTimeout(app, 0.2)
     return AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue) == .success
 }
 
@@ -259,3 +278,28 @@ func axReplaceSelection(_ el: AXUIElement?, with s: String) -> Bool {
           settable.boolValue else { return false }
     return AXUIElementSetAttributeValue(el, kAXSelectedTextAttribute as CFString, s as CFString) == .success
 }
+
+/// Приложение, в которое сейчас идёт ввод. NSWorkspace.frontmostApplication после блокировки экрана
+/// может так и остаться «loginwindow», поэтому берём владельца фокусного элемента через Accessibility.
+/// Проверка идёт на каждом нажатии — кешируем на 0,3 с.
+func inputApp(fresh: Bool = false) -> NSRunningApplication? {
+    let now = Date()
+    if !fresh, now.timeIntervalSince(frontCache.at) < 0.3 { return frontCache.app }
+    var app = NSWorkspace.shared.frontmostApplication
+    let sys = AXUIElementCreateSystemWide()
+    AXUIElementSetMessagingTimeout(sys, 0.1)
+    var ref: CFTypeRef?
+    if AXUIElementCopyAttributeValue(sys, kAXFocusedApplicationAttribute as CFString, &ref) == .success,
+       let r = ref, CFGetTypeID(r) == AXUIElementGetTypeID() {
+        var pid: pid_t = 0
+        if AXUIElementGetPid(r as! AXUIElement, &pid) == .success, let a = NSRunningApplication(processIdentifier: pid) {
+            app = a
+        }
+    }
+    frontCache = (now, app)
+    return app
+}
+
+private var frontCache: (at: Date, app: NSRunningApplication?) = (.distantPast, nil)
+
+func frontAppID() -> String? { inputApp()?.bundleIdentifier }
