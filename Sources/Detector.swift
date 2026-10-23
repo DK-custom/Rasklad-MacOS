@@ -344,6 +344,16 @@ struct TypingState {
         phraseLang = lang
     }
 
+    /// Знак набран сочетанием (⌃⌥Б → «,»): в слово не добавляем — клавиша Б при следующем пробеле
+    /// прочиталась бы как буква, — но в недавний текст пишем, чтобы видеть пробел перед знаком.
+    mutating func punctTyped(_ ch: Character) {
+        keys.removeAll()
+        langs.removeAll()
+        ambiguousPrev = nil
+        lastWord = nil
+        remember(String(ch))
+    }
+
     /// Пробел перед только что набранным знаком убран — так же и в недавнем тексте.
     mutating func spaceBeforePunctFixed() {
         guard recent.count >= 2 else { return }
@@ -439,4 +449,13 @@ func spaceBeforePunct(recent: String, char: Character) -> Bool {
     guard closingPunctuation.contains(char), recent.last == " " else { return false }
     let beforeSpace = recent.dropLast().last
     return beforeSpace.map { $0.isLetter || $0.isNumber } ?? false
+}
+
+/// ⌃⌥ + клавиша, которая в английской раскладке даёт закрывающий знак (⌃⌥Б → «,», ⌃⌥Ю → «.») —
+/// так ставят знаки английской раскладки, не переключаясь. `enChars` — таблица keycode*2+shift.
+func modifiedPunct(code: Int, flags: UInt64, _ enChars: [Int: Character]) -> Character? {
+    let ctrl: UInt64 = 0x40000, alt: UInt64 = 0x80000, cmd: UInt64 = 0x100000, shift: UInt64 = 0x20000
+    guard flags & ctrl != 0, flags & alt != 0, flags & cmd == 0,
+          let ch = enChars[code * 2 + (flags & shift != 0 ? 1 : 0)], closingPunctuation.contains(ch) else { return nil }
+    return ch
 }

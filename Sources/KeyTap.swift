@@ -94,8 +94,12 @@ final class KeyTap {
         let lang = layouts.current()
         let ch = (0...50).contains(code) ? lang.flatMap { char(k, layouts.chars($0)) } : nil
         let modified = !f.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty
-        let punct = !modified ? ch.flatMap { spaceBeforePunct(recent: typing.recent, char: $0) ? $0 : nil } : nil
+        // знак английской раскладки через ⌃⌥ (⌃⌥Б → «,») — это набор текста, а не сочетание клавиш
+        let modPunct = modified ? modifiedPunct(code: code, flags: f.rawValue, layouts.enChars) : nil
+        let typedChar = modPunct ?? (modified ? nil : ch)
+        let punct = typedChar.flatMap { spaceBeforePunct(recent: typing.recent, char: $0) ? $0 : nil }
         defer { if let punct, let lang { fixSpaceBeforePunct(punct, lang) } }
+        if let mp = modPunct { typing.punctTyped(mp); return }
         if typing.keyDown(code: code, key: k, char: ch, modified: modified, lang: lang) == .wordEnd {
             let (lang, ambiguous) = check()
             typing.endWord(lang: lang, ambiguous: ambiguous)

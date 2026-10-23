@@ -449,6 +449,20 @@ do {
     check(t.recent, "ab,")
 }
 
+// Знак через ⌃⌥ + клавишу английской раскладки (⌃⌥Б → «,», ⌃⌥Ю → «.»)
+check(modifiedPunct(code: 43, flags: 0xC0000, l.enChars).map { String($0) } ?? "nil", ",")   // ⌃⌥ + клавиша Б
+check(modifiedPunct(code: 47, flags: 0xC0000, l.enChars).map { String($0) } ?? "nil", ".")   // ⌃⌥ + клавиша Ю
+check(modifiedPunct(code: 0, flags: 0xC0000, l.enChars).map { String($0) } ?? "nil", "nil")  // ⌃⌥A — не знак
+check(modifiedPunct(code: 43, flags: 0x1C0000, l.enChars).map { String($0) } ?? "nil", "nil") // с ⌘ — сочетание
+check(modifiedPunct(code: 43, flags: 0x40000, l.enChars).map { String($0) } ?? "nil", "nil")  // только ⌃
+do {
+    var t = TypingState()
+    for (code, ch) in [(0, "a"), (11, "b")] as [(Int, Character)] { _ = t.keyDown(code: code, key: code * 4, char: ch, modified: false) }
+    t.endWord()
+    t.punctTyped(",")
+    check("\(t.keys.count) [\(t.recent)]", "0 [ab ,]")      // в слово не попал, недавний текст сохранён
+}
+
 // Место запуска: только «Программы» — иначе автозагрузка запомнит временный путь
 check(isProperInstallPath("/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")
 check(isProperInstallPath("/Users/u/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")

@@ -6,8 +6,8 @@
     <key>CFBundleName</key><string>Rasklad</string>
     <key>CFBundleExecutable</key><string>Rasklad</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.8.0</string>
-    <key>CFBundleVersion</key><string>30</string>
+    <key>CFBundleShortVersionString</key><string>1.8.1</string>
+    <key>CFBundleVersion</key><string>31</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>CFBundleIconFile</key><string>Rasklad</string>
     <key>LSUIElement</key><true/>
