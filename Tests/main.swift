@@ -424,6 +424,31 @@ do {
     check(lastWordConversion(keys: [], langs: [], l).map { $0.text } ?? "nil", "nil")
 }
 
+// Пробел перед знаком препинания: «слово ,» → «слово,»
+func sp(_ recent: String, _ ch: Character) -> String { spaceBeforePunct(recent: recent, char: ch) ? "придвинуть" : "нет" }
+check(sp("слово ", ","), "придвинуть")
+check(sp("hello ", "!"), "придвинуть")
+check(sp("5 ", "."), "придвинуть")
+check(sp("слово ", ")"), "придвинуть")
+check(sp("слово ", "»"), "придвинуть")
+check(sp("слово ", "—"), "нет")          // перед тире пробел нужен
+check(sp("слово ", "("), "нет")          // открывающая скобка
+check(sp("слово  ", ","), "нет")         // два пробела — выравнивание
+check(sp("слово, ", ":"), "нет")         // перед пробелом знак (смайлик « :)»)
+check(sp("слово\n", ","), "нет")
+check(sp(" ", ","), "нет")
+check(sp("", ","), "нет")
+check(sp("слово", ","), "нет")           // пробела нет
+do {
+    var t = TypingState()
+    for (code, ch) in [(0, "a"), (11, "b")] as [(Int, Character)] { _ = t.keyDown(code: code, key: code * 4, char: ch, modified: false) }
+    t.endWord()
+    _ = t.keyDown(code: 43, key: 43 * 4, char: ",", modified: false)
+    check(t.recent, "ab ,")
+    t.spaceBeforePunctFixed()
+    check(t.recent, "ab,")
+}
+
 // Место запуска: только «Программы» — иначе автозагрузка запомнит временный путь
 check(isProperInstallPath("/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")
 check(isProperInstallPath("/Users/u/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")

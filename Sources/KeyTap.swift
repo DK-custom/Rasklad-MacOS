@@ -26,6 +26,7 @@ final class KeyTap {
     private var lastSkip: String?
     private var lastAppPair: String?
     private var lastFix: (typed: String, from: Lang, text: String)? // для отмены, живёт до следующей клавиши
+    private var lastPunctFix: Character? // знак, придвинутый к слову (убран пробел перед ним), — для отмены
     var correctionKey: CorrectionKey = .rightOption { didSet { ropt = correctionKey.tap } }
     private var ropt = ModifierTap.rightOption, fnPress = FnPress()
     private var tap: CFMachPort?
@@ -84,6 +85,7 @@ final class KeyTap {
         ropt.other()
         fnEvent(fnPress.other())
         lastFix = nil
+        lastPunctFix = nil
         onActivity(type != .keyDown)
         guard type == .keyDown else { typing.reset(); return } // клик мышью — курсор мог уйти
 
@@ -92,6 +94,8 @@ final class KeyTap {
         let lang = layouts.current()
         let ch = (0...50).contains(code) ? lang.flatMap { char(k, layouts.chars($0)) } : nil
         let modified = !f.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty
+        let punct = !modified ? ch.flatMap { spaceBeforePunct(recent: typing.recent, char: $0) ? $0 : nil } : nil
+        defer { if let punct, let lang { fixSpaceBeforePunct(punct, lang) } }
         if typing.keyDown(code: code, key: k, char: ch, modified: modified, lang: lang) == .wordEnd {
             let (lang, ambiguous) = check()
             typing.endWord(lang: lang, ambiguous: ambiguous)
@@ -166,9 +170,26 @@ final class KeyTap {
         return (result.target, false)
     }
 
+    /// «слово ,» → «слово,»: знак уже ушёл в поле, поэтому стираем его вместе с пробелом и ставим вплотную.
+    /// Только с «Исправлять опечатки», вне кода и приложений-исключений.
+    private func fixSpaceBeforePunct(_ ch: Character, _ lang: Lang) {
+        let ids = [inputApp(fresh: true)?.bundleIdentifier, NSWorkspace.shared.frontmostApplication?.bundleIdentifier]
+        guard settings.typos, !anyExcluded(ids, excluded: settings.excludedApps, allowed: settings.allowedApps),
+              !(settings.protectCode && codeReason() != nil) else { return }
+        retype(erase: 2, with: String(ch), switchTo: lang)
+        typing.spaceBeforePunctFixed()
+        lastPunctFix = ch
+    }
+
     /// Клавиша исправления сразу после автозамены: вернуть как было. Первая отмена слова — только вернуть,
     /// повторная за сеанс — ещё и запомнить в исключениях.
     func undoLastFix() -> Bool {
+        if let p = lastPunctFix, let lang = layouts.current() {   // вернуть пробел перед знаком
+            lastPunctFix = nil
+            retype(erase: 1, with: " " + String(p), switchTo: lang)
+            dlog("отмена: пробел перед знаком возвращён")
+            return true
+        }
         guard let f = lastFix else { return false }
         lastFix = nil
         retype(erase: f.text.count + 1, with: f.typed + " ", switchTo: f.from)
@@ -204,7 +225,7 @@ final class KeyTap {
     }
 
     private func retype(erase: Int, with text: String, switchTo lang: Lang) {
-        selectLayout(layouts.source(lang))
+        if layouts.current() != lang { selectLayout(layouts.source(lang)) } // та же раскладка — не дёргаем индикатор
         for _ in 0..<erase { postKey(CGKeyCode(kVK_Delete)) }
         for ch in text { postChar(ch, key: layouts.key(for: ch, in: lang)) }
     }

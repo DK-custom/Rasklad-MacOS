@@ -10,7 +10,7 @@ and shows word definitions from the macOS dictionaries. Swift, no third-party de
 
 - **Auto-switch on space:** `ghbdtn` → «привет», `рщц` → "how"; short words are decided by lists
   of common words; words that exist in both languages («руку» / "here") — by the language of the phrase.
-- **Typos:** `првиет` → «привет», including together with a wrong layout (`ghbtdn` → «привет»).
+- **Typos:** `првиет` → «привет», including together with a wrong layout (`ghbtdn` → «привет»); a stray space before punctuation (`word ,` → `word,`).
 - **A word typed in two layouts** (`ска;b` → «скажи») and **accidental Caps Lock** (`правописанИЕ` → «правописание»).
 - **Correction key** (right ⌥ by default; also left ⌥, right/left ⌘, ⌃): undo the last fix,
   retype the current word, the word just finished (right after space) or the selection; with ⇧ — a definition popup styled like the system "Look Up".

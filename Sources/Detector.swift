@@ -344,6 +344,14 @@ struct TypingState {
         phraseLang = lang
     }
 
+    /// Пробел перед только что набранным знаком убран — так же и в недавнем тексте.
+    mutating func spaceBeforePunctFixed() {
+        guard recent.count >= 2 else { return }
+        let ch = recent.removeLast()
+        if recent.last == " " { recent.removeLast() }
+        recent.append(ch)
+    }
+
     mutating func reset() {
         lastWord = nil
         keys.removeAll()
@@ -420,4 +428,15 @@ func lastWordConversion(keys: [Int], langs: [Lang?], _ l: Layouts) -> (erase: In
     let t = text(keys, l.chars(target))
     guard t.count == keys.count else { return nil }
     return (keys.count + 1, t, target)
+}
+
+/// Знаки, которые пишутся вплотную к слову; тире, открывающие скобки и кавычки — нет.
+let closingPunctuation: Set<Character> = [",", ".", "!", "?", ":", ";", ")", "»", "”"]
+
+/// Набран знак препинания, а перед ним ровно один пробел после буквы или цифры: «слово ,» — пробел лишний.
+/// `recent` — текст до этого знака.
+func spaceBeforePunct(recent: String, char: Character) -> Bool {
+    guard closingPunctuation.contains(char), recent.last == " " else { return false }
+    let beforeSpace = recent.dropLast().last
+    return beforeSpace.map { $0.isLetter || $0.isNumber } ?? false
 }
