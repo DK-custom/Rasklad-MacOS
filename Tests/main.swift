@@ -208,6 +208,16 @@ check(code(field: "```\nlet x", typed: ""), "код")                    // об
 check(code(field: "```\nlet x\n``` и", typed: "```\nlet x\n``` и"), "текст")
 check(code(field: "привет как", typed: "привет как"), "текст")
 
+// Слово с ` — граница кода: `ghbdtn rfr ltkf` + пробел — последнее слово закрывает код, не трогаем
+do {
+    let inv = Dictionary(l.chars(.en).map { ($1, $0) }, uniquingKeysWith: min)
+    let keys = "ltkf`".map { inv[$0]! }.map { encodeKey(code: $0 / 2, shift: $0 % 2 == 1, caps: false) }
+    check(wordTouchesCode(text(keys, l.chars(.en))) ? "код" : "текст", "код")
+    check(wordTouchesCode("`ghbdtn") ? "код" : "текст", "код")
+    check(wordTouchesCode("ghbdtn") ? "код" : "текст", "текст")
+    check(wordTouchesCode("ltkf]") ? "код" : "текст", "текст")
+}
+
 // Элемент под курсором в веб-поле (снизу вверх до самого поля): блок кода — <code> или класс с «code»
 func caret(_ nodes: [(String, String, [String])]) -> String { caretInCode(nodes) ? "код" : "текст" }
 check(caret([("AXStaticText", "", []), ("AXGroup", "AXCodeStyleGroup", []), ("AXGroup", "", ["code-block"]),

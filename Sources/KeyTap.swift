@@ -133,7 +133,8 @@ final class KeyTap {
         if pair != lastAppPair { if let pair { dlog("приложение: \(pair)") }; lastAppPair = pair }
         guard !keys.isEmpty, let cur = layouts.current(),
               !anyExcluded(ids, excluded: settings.excludedApps, allowed: settings.allowedApps) else { return (nil, false) }
-        let why = settings.protectCode ? codeReason() : nil
+        let why = !settings.protectCode ? nil
+            : wordTouchesCode(text(keys, layouts.chars(cur))) ? "граница кода `" : codeReason()
         let note = why.map { "\($0) в \(frontAppID() ?? "?")" }
         if note != lastSkip { // в лог — только смена причины, без слов
             if let note { dlog("правка пропущена: \(note)") }

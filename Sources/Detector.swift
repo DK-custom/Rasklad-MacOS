@@ -291,6 +291,10 @@ func insideCode(field: String?, typed: String) -> Bool {
     return !squeeze(field[...]).isEmpty && squeeze(field[...]).hasSuffix(after)
 }
 
+/// В слове набран ` — оно открывает или закрывает код. Закрывающее слово проверяется уже после кавычки:
+/// в поле кавычки парные (а поля с оформлением их и вовсе убирают), но само слово — ещё код.
+func wordTouchesCode(_ typed: String) -> Bool { typed.contains("`") }
+
 /// Курсор в блоке кода поля с оформлением: элемент под курсором или его предок (кроме самого поля,
 /// оно последнее) — <code> (подроль AXCodeStyleGroup) или с классом про код (`<pre class="code-block">`).
 func caretInCode(_ nodes: [(role: String, subrole: String, classes: [String])]) -> Bool {
