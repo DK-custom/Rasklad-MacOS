@@ -38,7 +38,7 @@ Menu bar утилита для macOS, замена Punto Switcher. Swift, без
 
 - 1.5–1.6: «Забыть выученное слово…» (только `hasLearnedWord`, словарные не трогает; списка выученных macOS не отдаёт). Меню по разделам: Правка / Выделенный текст (рабочие пункты с клавишей в названии) / Клавиши / Слова / служебное с версией. `Rasklad --menu-dump` — структура меню текстом.
 
-- GitHub: https://github.com/DK-custom/Rasklad-MacOS (публичный, ветка main, лицензия MIT + NOTICE для FOLDOC). Выпуск v1.6.1 с DMG и ZIP: https://github.com/DK-custom/Rasklad-MacOS/releases/tag/v1.6.1 (новый: `./build.sh dist`, затем `gh release create vX --repo DK-custom/Rasklad-MacOS build/Rasklad.dmg build/Rasklad.zip`). Отправка: `git -c credential.helper= -c "credential.helper=!$HOME/Developer/bin/gh auth git-credential" push` (gh 2.102.0 в `~/Developer/bin`, вход DK-custom; глобальный git не настроен).
+- GitHub: https://github.com/DK-custom/Rasklad-MacOS (публичный, ветка main, лицензия MIT + NOTICE для FOLDOC). Установщик — только DMG (ZIP не собираем с 1.6.10; в выпусках ≤1.6.10 ZIP остался). Новый выпуск: `./build.sh dist`, затем `gh release create vX --repo DK-custom/Rasklad-MacOS build/Rasklad.dmg`. Отправка: `git -c credential.helper= -c "credential.helper=!$HOME/Developer/bin/gh auth git-credential" push` (gh 2.102.0 в `~/Developer/bin`, вход DK-custom; глобальный git не настроен).
 
 - 1.6.3: Fn переключает при нажатии (`FnPress`; индикатор «РУ/A» у курсора показывал прежнюю раскладку, когда переключали при отпускании), Fn+клавиша/модификатор — откат. Исключение приложения — по двум источникам (`anyExcluded`: владелец поля ввода без кеша и NSWorkspace), неизвестное приложение — не правим (в 1.6.1 была замена в исключённом Терминале). Не проверено вживую.
 
@@ -53,7 +53,7 @@ Menu bar утилита для macOS, замена Punto Switcher. Swift, без
 - `Sources/Detector.swift` — правило замены, тап правого ⌥.
 - `Sources/Settings.swift`, `Sources/KeyTap.swift`, `Sources/main.swift` (меню, права, приложения).
 - `Tests/main.swift` — самопроверка: `./build.sh test`. Сборка+установка+запуск: `./build.sh` → `/Applications/Rasklad.app`.
-- Перенос: `./build.sh dist` → `build/Rasklad.dmg` (универсальный arm64+x86_64, macOS 13+, внутри `Установка.txt` из `INSTALL.txt`). Gatekeeper отвергает (не нотаризовано) — на другом Mac один раз «Всё равно открыть». Установка из DMG проверена на этом Mac 2026-10-21 (с карантинной меткой): Gatekeeper → «Всё равно открыть» → окно настройки → права; после «Мониторинга ввода» macOS перезапускает приложение.
+- Перенос: `./build.sh dist` → установщик `build/Rasklad.dmg` (универсальный arm64+x86_64, macOS 13+, внутри `Установка.txt` из `INSTALL.txt`). Gatekeeper отвергает (не нотаризовано) — на другом Mac один раз «Всё равно открыть». Установка из DMG проверена на этом Mac 2026-10-21 (с карантинной меткой): Gatekeeper → «Всё равно открыть» → окно настройки → права; после «Мониторинга ввода» macOS перезапускает приложение.
 
 ## Важное
 - Подпись сертификатом «Rasklad Dev» (login keychain) — права TCC переживают пересборку. Без него ad-hoc и права слетают.

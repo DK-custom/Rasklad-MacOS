@@ -34,7 +34,7 @@ Typed text is never sent anywhere and is not written to the log (`~/Library/Logs
 ```bash
 ./build.sh test   # self-test, no frameworks
 ./build.sh        # build, install to /Applications and launch
-./build.sh dist   # build/Rasklad.dmg and build/Rasklad.zip for another Mac
+./build.sh dist   # installer build/Rasklad.dmg for another Mac
 python3 -I ItDict/build.py --install   # rebuild and install the "IT-термины" dictionary
 python3 -I ItDict/test_build.py        # dictionary builder test
 ```
@@ -46,7 +46,7 @@ the first launch goes through Privacy & Security → "Open Anyway".
 
 ## Install
 
-From `build/Rasklad.dmg` or `.zip` — see [INSTALL.txt](INSTALL.txt) (Russian; also covers uninstalling).
+Download `Rasklad.dmg` from [Releases](https://github.com/DK-custom/Rasklad-MacOS/releases/latest) (or build it with `./build.sh dist`), open it and drag Rasklad to Applications — see [INSTALL.txt](INSTALL.txt) (Russian; also covers uninstalling).
 The Accessibility and Input Monitoring permissions are requested step by step in the first-run window.
 
 ## Layout

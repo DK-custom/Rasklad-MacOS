@@ -35,7 +35,7 @@
 ```bash
 ./build.sh test   # самопроверка без фреймворков
 ./build.sh        # собрать, установить в /Applications и запустить
-./build.sh dist   # build/Rasklad.dmg и build/Rasklad.zip для другого Mac
+./build.sh dist   # установщик build/Rasklad.dmg для другого Mac
 python3 -I ItDict/build.py --install   # пересобрать словарь «IT-термины» и установить
 python3 -I ItDict/test_build.py        # тест сборщика словаря
 ```
@@ -47,7 +47,7 @@ python3 -I ItDict/test_build.py        # тест сборщика словар�
 
 ## Установка
 
-Из `build/Rasklad.dmg` или `.zip` — см. [INSTALL.txt](INSTALL.txt) (там же удаление).
+Скачайте `Rasklad.dmg` в [выпусках](https://github.com/DK-custom/Rasklad-MacOS/releases/latest) (или соберите `./build.sh dist`), откройте и перетащите Rasklad в «Программы» — см. [INSTALL.txt](INSTALL.txt) (там же удаление).
 Права «Универсальный доступ» и «Мониторинг ввода» выдаются в окне первого запуска.
 
 ## Устройство

@@ -1,7 +1,7 @@
 #!/bin/zsh
 # ./build.sh        — собрать build/Rasklad.app, установить в /Applications и запустить
 # ./build.sh test   — самопроверка
-# ./build.sh dist   — собрать build/Rasklad.dmg и build/Rasklad.zip для переноса на другой Mac (без установки здесь)
+# ./build.sh dist   — собрать установщик build/Rasklad.dmg для другого Mac (без установки здесь)
 set -e
 cd "${0:A:h}"
 mkdir -p build
@@ -39,17 +39,14 @@ echo "готово: $APP"
 
 if [[ "$1" == dist ]]; then
   STAGE=build/dmg
-  rm -rf $STAGE build/Rasklad build/Rasklad.dmg
+  rm -rf $STAGE build/Rasklad.dmg build/Rasklad.zip
   mkdir -p $STAGE
   ditto $APP $STAGE/Rasklad.app
   ln -s /Applications $STAGE/Applications
   cp INSTALL.txt "$STAGE/Установка.txt"
   hdiutil create -volname Rasklad -srcfolder $STAGE -format UDZO -quiet build/Rasklad.dmg
-  # ZIP — та же папка без ярлыка Applications; ditto сохраняет подпись и атрибуты бандла
-  rm -f $STAGE/Applications build/Rasklad.zip
-  mv $STAGE build/Rasklad && ditto -c -k --keepParent build/Rasklad build/Rasklad.zip
-  rm -rf build/Rasklad
-  echo "дистрибутив: build/Rasklad.dmg, build/Rasklad.zip"
+  rm -rf $STAGE
+  echo "установщик: build/Rasklad.dmg"
   exit 0
 fi
 
