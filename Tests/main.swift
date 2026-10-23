@@ -398,6 +398,32 @@ check(shouldCopySelection(axSelected: "", codeApp: true) ? "да" : "нет", "�
 check(shouldCopySelection(axSelected: nil, codeApp: true) ? "да" : "нет", "нет")
 check(shouldCopySelection(axSelected: "x", codeApp: true) ? "да" : "нет", "да")
 
+// Предыдущее слово: помнится сразу после пробела и забывается при любом следующем действии
+do {
+    var t = TypingState()
+    func k(_ code: Int, _ ch: Character?, lang: Lang = .en) { _ = t.keyDown(code: code, key: code * 4, char: ch, modified: false, lang: lang) }
+    k(0, "a"); k(11, "b"); t.endWord()
+    check(t.lastWord.map { "\($0.keys.count)" } ?? "nil", "2")
+    k(8, "c")                                                  // новая буква — уже не «сразу после пробела»
+    check(t.lastWord == nil ? "забыто" : "помнится", "забыто")
+    t.endWord(); _ = t.keyDown(code: 36, key: 0, char: nil, modified: false)   // Enter
+    check(t.lastWord == nil ? "забыто" : "помнится", "забыто")
+    k(0, "a"); t.endWord(); k(51, nil)                         // Backspace — курсор ушёл в слово
+    check(t.lastWord == nil ? "забыто" : "помнится", "забыто")
+    k(0, "a"); t.endWord(); t.reset()                          // клик, стрелка
+    check(t.lastWord == nil ? "забыто" : "помнится", "забыто")
+    t.endWord()                                                // пробел без слова (два пробела подряд)
+    check(t.lastWord == nil ? "нет слова" : "есть", "нет слова")
+}
+// Перенабор предыдущего слова: «ghbdtn » → «привет », стереть слово и пробел
+do {
+    let inv = Dictionary(l.chars(.en).map { ($1, $0) }, uniquingKeysWith: min)
+    let keys = "ghbdtn".map { inv[$0]! }.map { encodeKey(code: $0 / 2, shift: $0 % 2 == 1, caps: false) }
+    let r = lastWordConversion(keys: keys, langs: Array(repeating: .en, count: keys.count), l)
+    check(r.map { "\($0.erase)|\($0.text)|\($0.target)" } ?? "nil", "7|привет|ru")
+    check(lastWordConversion(keys: [], langs: [], l).map { $0.text } ?? "nil", "nil")
+}
+
 // Место запуска: только «Программы» — иначе автозагрузка запомнит временный путь
 check(isProperInstallPath("/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")
 check(isProperInstallPath("/Users/u/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")

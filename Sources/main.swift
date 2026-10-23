@@ -52,10 +52,11 @@ final class App: NSObject, NSApplicationDelegate {
         if let l = Layouts() {
             let t = KeyTap(layouts: l, settings: settings)
             // Клавиша исправления (по умолчанию правый ⌥): отменить автозамену, иначе перенабрать текущее
-            // слово, иначе — выделенное. С ⇧ — определение выделенного слова из словарей macOS.
+            // слово, иначе сразу после пробела — предыдущее, иначе — выделенное.
+            // С ⇧ — определение выделенного слова из словарей macOS.
             t.onRightOption = { [weak self, weak t] kind in
                 if kind == .shifted { self?.defineSelection(); return }
-                guard let t, !t.undoLastFix(), !t.convertCurrentWord() else { return }
+                guard let t, !t.undoLastFix(), !t.convertCurrentWord(), !t.convertLastWord() else { return }
                 self?.convertSelection()
             }
             // Подсказка у слова: после retype поле ещё не обновилось — даём ему мгновение.

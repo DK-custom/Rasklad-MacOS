@@ -13,7 +13,7 @@ and shows word definitions from the macOS dictionaries. Swift, no third-party de
 - **Typos:** `првиет` → «привет», including together with a wrong layout (`ghbtdn` → «привет»).
 - **A word typed in two layouts** (`ска;b` → «скажи») and **accidental Caps Lock** (`правописанИЕ` → «правописание»).
 - **Correction key** (right ⌥ by default; also left ⌥, right/left ⌘, ⌃): undo the last fix,
-  retype the current word or the selection; with ⇧ — a definition popup styled like the system "Look Up".
+  retype the current word, the word just finished (right after space) or the selection; with ⇧ — a definition popup styled like the system "Look Up".
 - **Fn/🌐** switches the layout without the macOS delay (the stock 🌐 action is turned off in Settings).
 - **Leaves code alone:** IDEs and terminals, code editors in the browser, text inside ``` and `…`.
 - **Leaves passwords alone:** password fields, the lock screen, system password dialogs.

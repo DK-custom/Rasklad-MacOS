@@ -192,6 +192,17 @@ final class KeyTap {
     /// Сразу, из обработчика нажатия: если отложить, следующая клавиша пользователя успеет раньше Backspace,
     /// и стёрта будет она, а не конец слова. Раскладку переключаем до набора — приложения, которые читают
     /// код клавиши, а не символ, переведут его уже в нужной раскладке.
+    /// Клавиша исправления сразу после пробела: перенабрать только что законченное слово в другой
+    /// раскладке (повторное нажатие вернёт обратно). После любой клавиши или клика слово уже забыто.
+    func convertLastWord() -> Bool {
+        guard typing.keys.isEmpty, let w = typing.lastWord,
+              let r = lastWordConversion(keys: w.keys, langs: w.langs, layouts) else { return false }
+        retype(erase: r.erase, with: r.text + " ", switchTo: r.target)
+        typing.lastWordConverted(to: r.target)
+        dlog("предыдущее слово перенабрано в \(r.target)")
+        return true
+    }
+
     private func retype(erase: Int, with text: String, switchTo lang: Lang) {
         selectLayout(layouts.source(lang))
         for _ in 0..<erase { postKey(CGKeyCode(kVK_Delete)) }

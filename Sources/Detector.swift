@@ -296,10 +296,14 @@ struct TypingState {
     var phraseLang: Lang?
     /// Клавиши предыдущего слова, если оно было неоднозначным и сразу за ним идёт текущее.
     private(set) var ambiguousPrev: [Int]?
+    /// Только что законченное слово — пока после пробела ничего не нажимали (для ручной правки клавишей
+    /// исправления). Любая клавиша, клик, Enter, Backspace — забыть: курсор мог уйти.
+    private(set) var lastWord: (keys: [Int], langs: [Lang?])?
 
     /// keyDown; `char` — символ в текущей раскладке; `modified` — с ⌘, ⌃ или ⌥.
     /// `.wordEnd` — пробел: проверить слово, затем `endWord()`.
     mutating func keyDown(code: Int, key: Int, char: Character?, modified: Bool, lang: Lang? = nil) -> Result {
+        if code != 49 { lastWord = nil }
         if modified { reset(); return .none }
         switch code {
         case 49: return .wordEnd                                       // пробел
@@ -326,13 +330,22 @@ struct TypingState {
     /// `ambiguous` — слово есть в обоих языках: следующее слово может исправить и его.
     mutating func endWord(lang: Lang? = nil, ambiguous: Bool = false) {
         ambiguousPrev = ambiguous && !keys.isEmpty ? keys : nil
+        lastWord = keys.isEmpty ? nil : (keys, langs)
         keys.removeAll()
         langs.removeAll()
         if let lang { phraseLang = lang }
         remember(" ")
     }
 
+    /// Предыдущее слово перенабрали в другой раскладке — повторное нажатие вернёт обратно.
+    mutating func lastWordConverted(to lang: Lang) {
+        guard let w = lastWord else { return }
+        lastWord = (w.keys, Array(repeating: lang, count: w.keys.count))
+        phraseLang = lang
+    }
+
     mutating func reset() {
+        lastWord = nil
         keys.removeAll()
         langs.removeAll()
         recent = ""
@@ -397,4 +410,14 @@ struct FnPress {
         held = false
         return .cancel
     }
+}
+
+/// Ручная правка предыдущего слова (клавиша исправления сразу после пробела): перенабрать его
+/// в другой раскладке. erase — слово и набранный после него пробел.
+func lastWordConversion(keys: [Int], langs: [Lang?], _ l: Layouts) -> (erase: Int, text: String, target: Lang)? {
+    guard !keys.isEmpty, let from = langs.last.flatMap({ $0 }) ?? l.current() else { return nil }
+    let target = from.other
+    let t = text(keys, l.chars(target))
+    guard t.count == keys.count else { return nil }
+    return (keys.count + 1, t, target)
 }
