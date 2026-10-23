@@ -12,6 +12,26 @@ final class App: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ n: Notification) {
         // ./Rasklad --onboarding-snapshot out.png [--fresh] — снимок окна настройки и выход
         let args = CommandLine.arguments
+        // open -n Rasklad.app --args --caret-dump 5 out.txt — через 5 с записать элемент под курсором с предками и выйти
+        if let i = args.firstIndex(of: "--caret-dump"), i + 2 < args.count, let delay = Double(args[i + 1]) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                _ = inputAnchor() // Chrome/Electron: включить дерево Accessibility, строится не сразу
+                if let pid = inputApp()?.processIdentifier { // только для отладки: Chrome сразу строит дерево для страниц
+                    AXUIElementSetAttributeValue(AXUIElementCreateApplication(pid), "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    var lines = caretAncestry().map { "\($0.role) \($0.subrole) \($0.classes.joined(separator: " "))" }
+                    if let f = inputField() {
+                        var role: CFTypeRef?
+                        AXUIElementCopyAttributeValue(f, kAXRoleAttribute as CFString, &role)
+                        lines += ["поле: \(role as? String ?? "?"), блок кода: \(caretInCode(caretAncestry()) ? "да" : "нет")"]
+                    } else { lines.append("нет фокуса, AX=\(AXIsProcessTrusted())") }
+                    try? ((frontAppID() ?? "?") + "\n" + lines.joined(separator: "\n") + "\n").write(toFile: args[i + 2], atomically: true, encoding: .utf8)
+                    exit(0)
+                }
+            }
+            return
+        }
         // ./Rasklad --define-snapshot слово out.png [--dark|--light] — снимок словарной подсказки и выход
         if let i = args.firstIndex(of: "--define-snapshot"), i + 2 < args.count {
             if args.contains("--dark") { NSApp.appearance = NSAppearance(named: .darkAqua) }

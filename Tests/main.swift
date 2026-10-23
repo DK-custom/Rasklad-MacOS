@@ -196,6 +196,27 @@ check(code("строка `x\nновая строка"), "текст")      // `�
 check(code("```\nкод с `кавычкой` внутри"), "код")   // внутри блока одиночные не важны
 check(code(""), "текст")
 
+// Поле с оформлением (Claude, Slack): ``` + пробел открыли блок кода, кавычки из текста поля пропали
+func code(field: String?, typed: String) -> String { insideCode(field: field, typed: typed) ? "код" : "текст" }
+check(code(field: "how", typed: "``` how"), "код")
+check(code(field: "how это\nработает", typed: "``` how это\nработает"), "код")
+check(code(field: "Привет! how", typed: "Привет! ``` how"), "код")
+check(code(field: "hello", typed: "``` how это\nhello"), "текст")     // сообщение отправлено — поле новое
+check(code(field: "", typed: "``` how"), "текст")                     // поле очистили
+check(code(field: nil, typed: "``` how"), "код")                      // поле не отдаёт текст — по набранному
+check(code(field: "```\nlet x", typed: ""), "код")                    // обычное поле — по тексту поля
+check(code(field: "```\nlet x\n``` и", typed: "```\nlet x\n``` и"), "текст")
+check(code(field: "привет как", typed: "привет как"), "текст")
+
+// Элемент под курсором в веб-поле (снизу вверх до самого поля): блок кода — <code> или класс с «code»
+func caret(_ nodes: [(String, String, [String])]) -> String { caretInCode(nodes) ? "код" : "текст" }
+check(caret([("AXStaticText", "", []), ("AXGroup", "AXCodeStyleGroup", []), ("AXGroup", "", ["code-block"]),
+             ("AXTextArea", "", ["ProseMirror"])]), "код")                      // Chrome: <pre class=code-block><code>
+check(caret([("AXStaticText", "", []), ("AXGroup", "", ["ql-code-block"]), ("AXTextArea", "", ["ql-editor"])]), "код")
+check(caret([("AXStaticText", "", []), ("AXGroup", "", ["paragraph"]), ("AXTextArea", "", ["ProseMirror"])]), "текст")
+check(caret([("AXStaticText", "", []), ("AXTextArea", "", ["codemirror-like", "code-input"])]), "текст") // классы самого поля — не блок внутри
+check(caret([]), "текст")
+
 // Редакторы кода в браузере — по классам элементов страницы
 check(isCodeEditor(["inputarea", "monaco-mouse-cursor-text"]) ? "да" : "нет", "да")
 check(isCodeEditor(["cm-content"]) ? "да" : "нет", "да")

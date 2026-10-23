@@ -278,6 +278,27 @@ func insideCode(_ before: String) -> Bool {
     return line.filter { $0 == "`" }.count % 2 == 1
 }
 
+/// `field` — текст поля перед курсором (nil — поле его не отдаёт), `typed` — недавно набранное.
+/// Редакторы с оформлением (Claude, Slack, Notion) превращают ``` + пробел в блок кода и убирают кавычки
+/// из текста поля. Поэтому верим и набранному, если набранное после открывающей кавычки всё ещё стоит
+/// в поле перед курсором: после отправки сообщения или очистки поля его там нет — защита снимается.
+func insideCode(field: String?, typed: String) -> Bool {
+    guard let field else { return insideCode(typed) }
+    if insideCode(field) { return true }
+    guard insideCode(typed), let mark = typed.lastIndex(of: "`") else { return false }
+    let squeeze = { (s: Substring) in String(s.filter { !$0.isWhitespace }) }
+    let after = squeeze(typed[typed.index(after: mark)...])
+    return !squeeze(field[...]).isEmpty && squeeze(field[...]).hasSuffix(after)
+}
+
+/// Курсор в блоке кода поля с оформлением: элемент под курсором или его предок (кроме самого поля,
+/// оно последнее) — <code> (подроль AXCodeStyleGroup) или с классом про код (`<pre class="code-block">`).
+func caretInCode(_ nodes: [(role: String, subrole: String, classes: [String])]) -> Bool {
+    nodes.dropLast().contains { n in
+        n.subrole == "AXCodeStyleGroup" || n.classes.contains { $0.lowercased().contains("code") }
+    }
+}
+
 /// Поле — редактор кода на веб-странице (Monaco, CodeMirror, Ace): по классам элемента и его предков.
 func isCodeEditor(_ classes: [String]) -> Bool {
     let markers = ["monaco-editor", "inputarea", "cm-content", "cm-editor", "CodeMirror", "ace_text-input", "ace_editor"]

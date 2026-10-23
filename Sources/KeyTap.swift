@@ -118,7 +118,8 @@ final class KeyTap {
     private func codeReason() -> String? {
         let ctx = focusedFieldContext()
         if isCodeEditor(ctx.classes) { return "редактор кода" }
-        return insideCode(ctx.before ?? typing.recent) ? "внутри кода Markdown" : nil
+        if caretInCode(caretAncestry()) { return "блок кода в поле" } // ``` уже стал блоком: клики и стрелки не сбивают
+        return insideCode(field: ctx.before, typed: typing.recent) ? "внутри кода Markdown" : nil
     }
 
     /// Сначала неверная раскладка (если включено автопереключение), затем мелкая опечатка в текущей,

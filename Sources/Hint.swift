@@ -266,6 +266,14 @@ func focusedFieldContext() -> (before: String?, classes: [String]) {
     return (nil, classes)
 }
 
+/// Фокусное поле приложения, в котором идёт ввод; Chrome не всегда отдаёт его системному элементу.
+func inputField() -> AXUIElement? {
+    guard let pid = inputApp()?.processIdentifier else { return axFocusedElement() }
+    let app = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(app, 0.1)
+    return focusedElement(of: app) ?? axFocusedElement()
+}
+
 /// Фокусное поле ввода через Accessibility (с коротким таймаутом).
 func axFocusedElement() -> AXUIElement? {
     let sys = AXUIElementCreateSystemWide()
@@ -328,3 +336,33 @@ func inputApp(fresh: Bool = false) -> NSRunningApplication? {
 private var frontCache: (at: Date, app: NSRunningApplication?) = (.distantPast, nil)
 
 func frontAppID() -> String? { inputApp()?.bundleIdentifier }
+
+/// Элемент веб-поля, в котором стоит курсор, и его предки до самого поля: роль, подроль, классы.
+/// Поля с оформлением (Claude, Slack) — один элемент на весь текст, а блок кода внутри — свой элемент.
+func caretAncestry(limit: Int = 8) -> [(role: String, subrole: String, classes: [String])] {
+    guard let field = inputField() else { return [] }
+    var range: CFTypeRef?, at: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(field, "AXSelectedTextMarkerRange" as CFString, &range) == .success, let r = range,
+          CFGetTypeID(r) == AXTextMarkerRangeGetTypeID(),
+          AXUIElementCopyParameterizedAttributeValue(field, "AXUIElementForTextMarker" as CFString,
+                                                     AXTextMarkerRangeCopyStartMarker(r as! AXTextMarkerRange), &at) == .success,
+          let a = at, CFGetTypeID(a) == AXUIElementGetTypeID() else { return [] }
+    func str(_ n: AXUIElement, _ attr: String) -> String {
+        var v: CFTypeRef?
+        return AXUIElementCopyAttributeValue(n, attr as CFString, &v) == .success ? (v as? String ?? "") : ""
+    }
+    var out: [(String, String, [String])] = []
+    var node: AXUIElement? = (a as! AXUIElement)
+    for _ in 0..<limit {
+        guard let n = node else { break }
+        AXUIElementSetMessagingTimeout(n, 0.05)
+        var c: CFTypeRef?
+        let classes = AXUIElementCopyAttributeValue(n, "AXDOMClassList" as CFString, &c) == .success ? (c as? [String] ?? []) : []
+        out.append((str(n, kAXRoleAttribute), str(n, kAXSubroleAttribute), classes))
+        if CFEqual(n, field) { break }
+        var p: CFTypeRef?
+        node = AXUIElementCopyAttributeValue(n, kAXParentAttribute as CFString, &p) == .success
+            && p.map { CFGetTypeID($0) == AXUIElementGetTypeID() } == true ? (p as! AXUIElement) : nil
+    }
+    return out
+}
