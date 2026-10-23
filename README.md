@@ -8,6 +8,7 @@ and shows word definitions from the macOS dictionaries. Swift, no third-party de
 
 **Free and open-source Punto Switcher alternative for Mac** — an automatic Russian/English keyboard
 layout switcher that fixes text typed in the wrong layout (like Caramba Switcher or Punto Switcher on Windows).
+It works with the dictionaries built into macOS: nothing to download, works offline.
 
 **[⬇ Download Rasklad.dmg](https://github.com/DK-custom/Rasklad-MacOS/releases/latest/download/Rasklad.dmg)**
 · [Website](https://dk-custom.github.io/Rasklad-MacOS/) · macOS 13+, Apple Silicon and Intel · interface in English and Russian
@@ -16,6 +17,9 @@ layout switcher that fixes text typed in the wrong layout (like Caramba Switcher
 
 ## Features
 
+- **Built-in macOS dictionaries:** words are checked against the system Russian and English spelling
+  dictionaries (words added with "Learn Spelling" count too), definitions come from the macOS Dictionary app —
+  no word lists to download, works offline.
 - **Auto-switch on space:** `ghbdtn` → «привет», `рщц` → "how"; short words are decided by lists
   of common words; words that exist in both languages («руку» / "here") — by the language of the phrase.
 - **Typos:** `првиет` → «привет», including together with a wrong layout (`ghbtdn` → «привет»); a stray space before punctuation (`word ,` → `word,`).
