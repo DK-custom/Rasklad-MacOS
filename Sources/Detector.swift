@@ -144,10 +144,10 @@ enum CorrectionKey: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .rightOption: "Правый ⌥ Option"
-        case .leftOption: "Левый ⌥ Option"
-        case .rightCommand: "Правый ⌘ Command"
-        case .leftCommand: "Левый ⌘ Command"
+        case .rightOption: tr("Правый ⌥ Option", "Right ⌥ Option")
+        case .leftOption: tr("Левый ⌥ Option", "Left ⌥ Option")
+        case .rightCommand: tr("Правый ⌘ Command", "Right ⌘ Command")
+        case .leftCommand: tr("Левый ⌘ Command", "Left ⌘ Command")
         case .control: "⌃ Control"
         }
     }
@@ -155,10 +155,10 @@ enum CorrectionKey: String, CaseIterable {
     /// Для подсказок и меню: «правый ⌥».
     var short: String {
         switch self {
-        case .rightOption: "правый ⌥"
-        case .leftOption: "левый ⌥"
-        case .rightCommand: "правый ⌘"
-        case .leftCommand: "левый ⌘"
+        case .rightOption: tr("правый ⌥", "right ⌥")
+        case .leftOption: tr("левый ⌥", "left ⌥")
+        case .rightCommand: tr("правый ⌘", "right ⌘")
+        case .leftCommand: tr("левый ⌘", "left ⌘")
         case .control: "⌃ Control"
         }
     }
@@ -354,8 +354,11 @@ struct TypingState {
         remember(String(ch))
     }
 
-    /// Пробел перед только что набранным знаком убран — так же и в недавнем тексте.
+    /// Пробел перед только что набранным знаком убран — так же и в недавнем тексте. Сам знак из буфера
+    /// слова убираем: иначе клавиша исправления после отмены перенабрала бы его как слово («,» → «^»).
     mutating func spaceBeforePunctFixed() {
+        keys.removeAll()
+        langs.removeAll()
         guard recent.count >= 2 else { return }
         let ch = recent.removeLast()
         if recent.last == " " { recent.removeLast() }

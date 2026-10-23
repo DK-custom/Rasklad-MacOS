@@ -447,6 +447,8 @@ do {
     check(t.recent, "ab ,")
     t.spaceBeforePunctFixed()
     check(t.recent, "ab,")
+    // знак — не слово: клавиша исправления после отмены не должна перенабирать запятую в «^»/«б»
+    check("\(t.keys.count)", "0")
 }
 
 // Знак через ⌃⌥ + клавишу английской раскладки (⌃⌥Б → «,», ⌃⌥Ю → «.»)
@@ -505,5 +507,13 @@ do {
     check(isWord("play", .en) ? "слово" : "не слово", "слово")
     check("\(forgetLearnedWord("  "))", "empty")
 }
+
+// Язык интерфейса: русский, если он раньше английского в предпочитаемых языках; иначе английский
+check(prefersRussian(["ru-RU", "en-US"]) ? "ru" : "en", "ru")
+check(prefersRussian(["en-US", "ru-RU"]) ? "ru" : "en", "en")
+check(prefersRussian(["de-DE", "ru-RU"]) ? "ru" : "en", "ru")      // немецкого нет — следующий в списке
+check(prefersRussian(["de-DE", "fr-FR"]) ? "ru" : "en", "en")      // ни одного из двух — английский
+check(prefersRussian(["uk-UA", "en-US"]) ? "ru" : "en", "en")
+check(prefersRussian([]) ? "ru" : "en", "en")
 
 print("all ok, map size en→ru:", l.enToRu.count)

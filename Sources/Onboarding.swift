@@ -23,7 +23,7 @@ final class Onboarding: NSObject {
     private let keyPopup = NSPopUpButton(frame: .zero, pullsDown: false)
     private let keyMark = NSTextField(labelWithString: "")
     private let footer = NSTextField(wrappingLabelWithString: "")
-    private let doneButton = NSButton(title: "Готово", target: nil, action: nil)
+    private let doneButton = NSButton(title: tr("Готово", "Done"), target: nil, action: nil)
     private var timer: Timer?
 
     private final class Row {
@@ -67,7 +67,7 @@ final class Onboarding: NSObject {
         self.settings = settings
         window = NSWindow(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
         super.init()
-        window.title = "Rasklad — настройка"
+        window.title = tr("Rasklad — настройка", "Rasklad Setup")
         window.isReleasedWhenClosed = false
         window.level = .floating // остаётся видимым рядом с окном Настроек
 
@@ -76,23 +76,40 @@ final class Onboarding: NSObject {
         keyPopup.action = #selector(keyChanged)
 
         rows = [
-            Row("Универсальный доступ", "Чтобы перенабирать слова и конвертировать выделенный текст.",
+            Row(tr("Универсальный доступ", "Accessibility"),
+                tr("Чтобы перенабирать слова и конвертировать выделенный текст.",
+                   "To retype words and convert selected text."),
                 key: "askedAX", control: button(#selector(stepAX))),
-            Row("Мониторинг ввода", "Чтобы видеть набираемые слова. Слова никуда не отправляются и не сохраняются.",
+            Row(tr("Мониторинг ввода", "Input Monitoring"),
+                tr("Чтобы видеть набираемые слова. Слова никуда не отправляются и не сохраняются.",
+                   "To see the words you type. Nothing is sent anywhere or stored."),
                 key: "askedListen", control: button(#selector(stepListen))),
-            Row("Быстрая смена языка по Fn/🌐", "Вместо штатной, без задержки macOS. Штатное действие нужно "
-                + "отключить: Клавиатура → «Нажатие клавиши 🌐» → «Ничего не делать».", control: button(#selector(stepFn))),
-            Row("Caps Lock без смены языка", "Штатная смена по Caps Lock тормозит так же. Клавиатура → Источники ввода → "
-                + "«Изменить…» → снять «Caps Lock для переключения».", control: button(#selector(openKeyboard))),
-            Row("Словарь IT-термины (необязательно)", "≈15 тыс. английских терминов и сокращений (FOLDOC) и русские "
-                + "IT-термины для определения слов. Затем «Словарь» → Настройки: включить и поставить под Толковым.",
+            Row(tr("Быстрая смена языка по Fn/🌐", "Instant layout switch with Fn/🌐"),
+                tr("Вместо штатной, без задержки macOS. Штатное действие нужно отключить: "
+                   + "Клавиатура → «Нажатие клавиши 🌐» → «Действие не требуется».",
+                   "Replaces the built-in switch without the macOS delay. Turn the built-in action off: "
+                   + "Keyboard → “Press 🌐 key to” → “Do Nothing”."), control: button(#selector(stepFn))),
+            Row(tr("Caps Lock без смены языка", "Caps Lock without switching"),
+                tr("Штатная смена по Caps Lock тормозит так же. Клавиатура → Источники ввода → «Изменить…» → "
+                   + "снять «Использовать клавишу Caps Lock для переключения…».",
+                   "The built-in Caps Lock switch has the same delay. Keyboard → Input Sources → “Edit…” → "
+                   + "uncheck “Use the Caps Lock key to switch to and from…”."), control: button(#selector(openKeyboard))),
+            Row(tr("Словарь IT-термины (необязательно)", "IT Terms dictionary (optional)"),
+                tr("≈15 тыс. английских терминов и сокращений (FOLDOC) и русские IT-термины для определения слов. "
+                   + "Затем «Словарь» → Настройки: включить и поставить под Толковым.",
+                   "≈15,000 English computing terms and abbreviations (FOLDOC) plus Russian IT terms for definitions. "
+                   + "Then Dictionary → Settings: turn it on and drag it where you want it."),
                 control: button(#selector(stepIT))),
-            Row("Клавиша исправления", "По умолчанию правый ⌥. Отмена замены, перенабор слова или выделенного; с ⇧ — определение.",
+            Row(tr("Клавиша исправления", "Correction key"),
+                tr("По умолчанию правый ⌥. Отмена замены, перенабор слова или выделенного; с ⇧ — определение.",
+                   "Right ⌥ by default. Undoes a fix, retypes the word or selection; with ⇧ shows a definition."),
                 control: keyPopup, mark: keyMark),
         ]
-        let intro = NSTextField(wrappingLabelWithString:
+        let intro = NSTextField(wrappingLabelWithString: tr(
             "Rasklad нужны два разрешения macOS. Выдать их может только пользователь — нажмите кнопку, "
-            + "включите Rasklad в открывшемся разделе Настроек, галочка здесь появится сама. Остальное — по желанию.")
+            + "включите Rasklad в открывшемся разделе Настроек, галочка здесь появится сама. Остальное — по желанию.",
+            "Rasklad needs two macOS permissions that only you can grant: click the button, turn Rasklad on "
+            + "in the System Settings pane that opens, and the check mark appears here. The rest is optional."))
         intro.font = .systemFont(ofSize: 12)
         intro.preferredMaxLayoutWidth = 480
         footer.font = .systemFont(ofSize: 11)
@@ -134,20 +151,21 @@ final class Onboarding: NSObject {
         update(rows[0], done: s.ax, active: true)
         update(rows[1], done: s.listen, active: s.ax)
         update(rows[2], done: s.fnOn && s.fnSystemOff, active: ready)
-        (rows[2].control as? NSButton)?.title = !s.fnOn ? "Включить" : (s.fnSystemOff ? "Готово" : "Открыть настройки")
+        (rows[2].control as? NSButton)?.title = !s.fnOn ? tr("Включить", "Turn On") : (s.fnSystemOff ? tr("Готово", "Done") : tr("Открыть настройки", "Open Settings"))
         update(rows[3], done: s.capsOff, active: ready)
-        (rows[3].control as? NSButton)?.title = s.capsOff ? "Готово" : "Открыть настройки"
+        (rows[3].control as? NSButton)?.title = s.capsOff ? tr("Готово", "Done") : tr("Открыть настройки", "Open Settings")
         update(rows[4], done: s.itActive, active: true)
         let it = rows[4].control as? NSButton
-        it?.title = s.itActive ? "Готово" : (s.itInstalled ? "Открыть «Словарь»" : "Установить")
-        if !s.itInstalled && ITDictionary.bundled == nil { it?.title = "Нет в сборке"; it?.isEnabled = false }
+        it?.title = s.itActive ? tr("Готово", "Done") : (s.itInstalled ? tr("Открыть «Словарь»", "Open Dictionary") : tr("Установить", "Install"))
+        if !s.itInstalled && ITDictionary.bundled == nil { it?.title = tr("Нет в сборке", "Not included"); it?.isEnabled = false }
 
         let k = settings.correctionKey
         keyPopup.selectItem(at: CorrectionKey.allCases.firstIndex(of: k) ?? 0)
         keyMark.stringValue = k.symbol
         keyMark.textColor = .controlAccentColor
         doneButton.isEnabled = ready
-        footer.stringValue = !s.ax ? "Шаг 1 из 2." : !s.listen ? "Шаг 2 из 2." : "Права выданы. Остальное — по желанию."
+        footer.stringValue = !s.ax ? tr("Шаг 1 из 2.", "Step 1 of 2.") : !s.listen ? tr("Шаг 2 из 2.", "Step 2 of 2.")
+            : tr("Права выданы. Остальное — по желанию.", "Permissions granted. The rest is optional.")
     }
 
     private func update(_ r: Row, done: Bool, active: Bool) {
@@ -155,7 +173,8 @@ final class Onboarding: NSObject {
         r.mark.textColor = done ? .systemGreen : (active ? .controlAccentColor : .tertiaryLabelColor)
         r.control.isEnabled = active && !done
         guard !r.key.isEmpty, let b = r.control as? NSButton else { return }
-        b.title = done ? "Готово" : (UserDefaults.standard.bool(forKey: r.key) ? "Открыть настройки" : "Разрешить")
+        b.title = done ? tr("Готово", "Done")
+            : (UserDefaults.standard.bool(forKey: r.key) ? tr("Открыть настройки", "Open Settings") : tr("Разрешить", "Allow"))
     }
 
     /// Первый раз — системный запрос (он же добавляет Rasklad в список), дальше — раздел Настроек.

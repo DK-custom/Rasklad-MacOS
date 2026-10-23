@@ -44,6 +44,7 @@ if [[ "$1" == dist ]]; then
   ditto $APP $STAGE/Rasklad.app
   ln -s /Applications $STAGE/Applications
   cp INSTALL.txt "$STAGE/Установка.txt"
+  cp INSTALL.en.txt "$STAGE/Install.txt"
   hdiutil create -volname Rasklad -srcfolder $STAGE -format UDZO -quiet build/Rasklad.dmg
   rm -rf $STAGE
   echo "установщик: build/Rasklad.dmg"

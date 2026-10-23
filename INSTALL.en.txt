@@ -1,0 +1,52 @@
+Rasklad — installing on another Mac
+
+Requires macOS 13 or later with the “ABC” (or “U.S.”) and “Russian” input sources enabled.
+
+1. Drag Rasklad.app to the Applications folder.
+
+2. First launch. The app isn’t notarized by Apple, so macOS blocks it:
+   - double-click Rasklad.app and click “Done” in the warning;
+   - System Settings → Privacy & Security → at the bottom “Rasklad was blocked…” →
+     “Open Anyway”, confirm with your password.
+   You only do this once.
+
+3. Permissions. On first launch the “Rasklad Setup” window opens — go through the steps in order:
+   - “Accessibility” → “Allow” → “Open System Settings” in the system prompt → turn Rasklad on;
+   - “Input Monitoring” → the same;
+   - check marks appear by themselves, no restart needed (after Input Monitoring macOS may offer
+     “Quit & Reopen” — accept);
+   - optional, in the same window: “Instant layout switch with Fn/🌐” (“Turn On” opens Keyboard settings —
+     set “Press 🌐 key to” → “Do Nothing”), “Caps Lock without switching”,
+     “IT Terms dictionary” (“Install”, then Dictionary → Settings: turn it on and drag it where you want it)
+     and “Correction key” (right/left ⌥, right/left ⌘ or ⌃ Control; right ⌥ by default);
+   - “Done”. Reopen the window any time: “Аа” menu → “Setup…”.
+
+4. Open at Login is turned on automatically on first launch (menu item “Open at Login”).
+
+5. Fallback layout switch in case Rasklad isn’t running: Keyboard → Keyboard Shortcuts →
+   Input Sources → enable “Select the previous input source” (⌃Space).
+
+Usage:
+- a word typed in the wrong layout or with a small typo is fixed on Space; a stray space before , . ! ? : ; ) »
+  is removed as soon as you type the mark;
+- correction key (right ⌥ by default) — undo the last fix (undo the same word twice and it goes to exceptions);
+  otherwise retype the current word, right after Space — the previous word, otherwise the selected text
+  in the other layout;
+- ⇧ + correction key — definition of the selected word (including from “IT Terms”);
+- no automatic fixes in code (IDEs and terminals, code editors in the browser, inside ``` and `…`);
+- Fn/🌐 — instant RU ↔ EN switch;
+- “Аа” menu — turn features on/off, word exceptions, “Don’t fix in …” for the current app.
+
+The interface follows the macOS language (Russian or English); you can also pick it for Rasklad alone
+in System Settings → General → Language & Region → Applications.
+
+Uninstall:
+1. “Аа” menu → turn off “Open at Login”, then “Quit”.
+2. Delete Rasklad.app from Applications.
+3. System Settings → Privacy & Security → “Accessibility” and “Input Monitoring”:
+   select Rasklad and click “−”.
+4. Optionally, data (Finder: Go → Go to Folder, ⇧⌘G):
+   ~/Library/Dictionaries/ITTerms.dictionary          — IT Terms dictionary (turn it off in Dictionary first)
+   ~/Library/Application Support/Rasklad              — word exceptions
+   ~/Library/Logs/Rasklad.log                         — log (no typed words)
+   ~/Library/Preferences/local.rasklad.plist          — settings

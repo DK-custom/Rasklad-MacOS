@@ -65,8 +65,9 @@ final class App: NSObject, NSApplicationDelegate {
                 self.hintSoon("\(typed) → \(fixed)", hideAfter: 2)
             }
             t.onUndo = { [weak self] typed, remembered in
-                self?.hintSoon(remembered ? "↩ \(typed)   больше не меняю — в исключениях"
-                                          : "↩ \(typed)   отмените ещё раз — перестану менять это слово",
+                self?.hintSoon(remembered ? "↩ \(typed)   " + tr("больше не меняю — в исключениях", "won’t change it again — added to exceptions")
+                                          : "↩ \(typed)   " + tr("отмените ещё раз — перестану менять это слово",
+                                                                "undo once more to stop changing this word"),
                                hideAfter: remembered ? 1.5 : 2.5)
             }
             t.onActivity = { [weak self] click in
@@ -142,11 +143,14 @@ final class App: NSObject, NSApplicationDelegate {
         let path = Bundle.main.bundlePath
         dlog("запуск не из «Программ»: \(path)")
         let a = NSAlert()
-        a.messageText = "Переместите Rasklad в «Программы»"
-        a.informativeText = "Rasklad запущен \(path.hasPrefix("/Volumes/") ? "прямо из образа диска" : "не из папки «Программы»"). "
-            + "Отсюда не будет работать запуск при входе. Перетащите Rasklad.app в «Программы» и запустите оттуда."
-        a.addButton(withTitle: "Открыть «Программы» и выйти")
-        a.addButton(withTitle: "Продолжить без автозапуска")
+        let dmg = path.hasPrefix("/Volumes/")
+        a.messageText = tr("Переместите Rasklad в «Программы»", "Move Rasklad to Applications")
+        a.informativeText = tr("Rasklad запущен \(dmg ? "прямо из образа диска" : "не из папки «Программы»"). "
+            + "Отсюда не будет работать запуск при входе. Перетащите Rasklad.app в «Программы» и запустите оттуда.",
+            "Rasklad is running \(dmg ? "from the disk image" : "outside the Applications folder"). "
+            + "Open at Login won’t work from here. Drag Rasklad.app to Applications and open it from there.")
+        a.addButton(withTitle: tr("Открыть «Программы» и выйти", "Open Applications and Quit"))
+        a.addButton(withTitle: tr("Продолжить без автозапуска", "Continue Without Open at Login"))
         NSApp.activate(ignoringOtherApps: true)
         if a.runModal() == .alertFirstButtonReturn {
             NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications"))
@@ -180,7 +184,7 @@ final class App: NSObject, NSApplicationDelegate {
 
     func updateAppItem() {
         let name = frontApp?.localizedName ?? "?"
-        appItem.title = "Не править в «\(name)»"
+        appItem.title = tr("Не править в «\(name)»", "Don’t fix in “\(name)”")
         appItem.state = settings.isExcluded(frontApp?.bundleIdentifier ?? "") ? .on : .off
         appItem.isHidden = frontApp?.bundleIdentifier == nil
     }
@@ -195,13 +199,14 @@ final class App: NSObject, NSApplicationDelegate {
     /// выученных слов, поэтому слово вводят; словарные слова не трогаем.
     @objc func forgetWord() {
         let a = NSAlert()
-        a.messageText = "Забыть выученное слово"
-        a.informativeText = "Слово, которое добавили через «Запомнить правописание». Слова из словарей это не затронет."
+        a.messageText = tr("Забыть выученное слово", "Forget a Learned Word")
+        a.informativeText = tr("Слово, которое добавили через «Запомнить правописание». Слова из словарей это не затронет.",
+                               "A word added with “Learn Spelling”. Dictionary words are not affected.")
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
-        field.placeholderString = "например, paly"
+        field.placeholderString = tr("например, paly", "for example, paly")
         a.accessoryView = field
-        a.addButton(withTitle: "Забыть")
-        a.addButton(withTitle: "Отмена")
+        a.addButton(withTitle: tr("Забыть", "Forget"))
+        a.addButton(withTitle: tr("Отмена", "Cancel"))
         a.window.initialFirstResponder = field
         NSApp.activate(ignoringOtherApps: true)
         guard a.runModal() == .alertFirstButtonReturn else { return }
@@ -209,15 +214,18 @@ final class App: NSObject, NSApplicationDelegate {
         let done = NSAlert()
         switch forgetLearnedWord(word) {
         case .forgotten:
-            done.messageText = "«\(word)» забыто"
-            done.informativeText = "Проверка орфографии снова считает его ошибкой и сможет исправить."
+            done.messageText = tr("«\(word)» забыто", "“\(word)” forgotten")
+            done.informativeText = tr("Проверка орфографии снова считает его ошибкой и сможет исправить.",
+                                      "Spell checking treats it as a mistake again and can correct it.")
         case .notLearned:
-            done.messageText = "«\(word)» не было выучено"
-            done.informativeText = "Это слово из словаря или его нет в выученных — ничего не меняю."
+            done.messageText = tr("«\(word)» не было выучено", "“\(word)” wasn’t learned")
+            done.informativeText = tr("Это слово из словаря или его нет в выученных — ничего не меняю.",
+                                      "It’s a dictionary word or not among learned words — nothing changed.")
         case .empty: return
         case .failed:
-            done.messageText = "Не получилось забыть «\(word)»"
-            done.informativeText = "Служба проверки орфографии не приняла изменение."
+            done.messageText = tr("Не получилось забыть «\(word)»", "Couldn’t forget “\(word)”")
+            done.informativeText = tr("Служба проверки орфографии не приняла изменение.",
+                                      "The spell checking service didn’t accept the change.")
         }
         done.runModal()
     }
@@ -253,25 +261,25 @@ final class App: NSObject, NSApplicationDelegate {
         permsItem.action = #selector(showOnboarding)
         add(permsItem)
 
-        header("Правка")
-        item("Автопереключение раскладки", #selector(toggleAuto(_:)), on: settings.autoSwitch)
-        item("Исправлять опечатки", #selector(toggleTypos(_:)), on: settings.typos)
-        item("Не править код (``` и редакторы кода)", #selector(toggleCode(_:)), on: settings.protectCode)
+        header(tr("Правка", "Fixing"))
+        item(tr("Автопереключение раскладки", "Auto-switch Layout"), #selector(toggleAuto(_:)), on: settings.autoSwitch)
+        item(tr("Исправлять опечатки", "Fix Typos"), #selector(toggleTypos(_:)), on: settings.typos)
+        item(tr("Не править код (``` и редакторы кода)", "Don’t Fix Code (``` and code editors)"), #selector(toggleCode(_:)), on: settings.protectCode)
         add(appItem)
 
-        header("Клавиши")
+        header(tr("Клавиши", "Keys"))
         for k in CorrectionKey.allCases {
-            let i = keyMenu.addItem(withTitle: k.title + (k == .rightOption ? " (по умолчанию)" : ""),
+            let i = keyMenu.addItem(withTitle: k.title + (k == .rightOption ? tr(" (по умолчанию)", " (default)") : ""),
                                     action: #selector(pickKey(_:)), keyEquivalent: "")
             i.target = self
             i.representedObject = k.rawValue
         }
-        m.addItem(withTitle: "Клавиша исправления", action: nil, keyEquivalent: "").submenu = keyMenu
+        m.addItem(withTitle: tr("Клавиша исправления", "Correction Key"), action: nil, keyEquivalent: "").submenu = keyMenu
         add(fnItem)
 
-        header("Слова")
-        item("Исключения слов…", #selector(openWords))
-        item("Забыть выученное слово…", #selector(forgetWord))
+        header(tr("Слова", "Words"))
+        item(tr("Исключения слов…", "Word Exceptions…"), #selector(openWords))
+        item(tr("Забыть выученное слово…", "Forget Learned Word…"), #selector(forgetWord))
 
         // справка о клавише исправления — неактивные строки
         m.addItem(.separator())
@@ -281,10 +289,10 @@ final class App: NSObject, NSApplicationDelegate {
         m.addItem(defineItem)
         m.addItem(.separator())
         add(loginItem)
-        item("Настройка…", #selector(showOnboarding), key: ",")
+        item(tr("Настройка…", "Setup…"), #selector(showOnboarding), key: ",")
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         m.addItem(withTitle: "Rasklad \(v)", action: nil, keyEquivalent: "").isEnabled = false
-        m.addItem(withTitle: "Выход", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        m.addItem(withTitle: tr("Выход", "Quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         return m
     }
 
@@ -299,8 +307,9 @@ final class App: NSObject, NSApplicationDelegate {
     func applyKey(_ k: CorrectionKey) {
         keyTap?.correctionKey = k
         let key = k.short.prefix(1).uppercased() + k.short.dropFirst()
-        convertItem.title = "\(key) — отмена замены, конвертация слова или выделенного"
-        defineItem.title = "⇧ + \(k.short) — определение выделенного слова"
+        convertItem.title = "\(key) — " + tr("отмена замены, конвертация слова или выделенного",
+                                             "undo a fix, convert the word or selection")
+        defineItem.title = "⇧ + \(k.short) — " + tr("определение выделенного слова", "define the selected word")
         keyMenu.items.forEach { $0.state = ($0.representedObject as? String) == k.rawValue ? .on : .off }
     }
 
@@ -316,8 +325,9 @@ final class App: NSObject, NSApplicationDelegate {
     func updateFnItem() {
         fnItem.state = settings.fnSwitch ? .on : .off
         fnItem.title = settings.fnSwitch && systemFnUsage() != 0
-            ? "Fn/🌐 — смена раскладки (в Настройках: 🌐 → «Ничего не делать»)"
-            : "Fn/🌐 — мгновенная смена раскладки"
+            ? tr("Fn/🌐 — смена раскладки (в Настройках: 🌐 → «Действие не требуется»)",
+                 "Fn/🌐 — switch layout (in System Settings: 🌐 → “Do Nothing”)")
+            : tr("Fn/🌐 — мгновенная смена раскладки", "Fn/🌐 — instant layout switch")
     }
 
     func refreshPerms() {
@@ -326,13 +336,13 @@ final class App: NSObject, NSApplicationDelegate {
         let listen = CGPreflightListenEventAccess()
         if listen, let t = keyTap, !t.running, t.start() { dlog("перехват запущен") }
         let ax = AXIsProcessTrusted(), tap = listen && (keyTap?.running ?? false)
-        let missing = [ax ? nil : "Универсальный доступ", tap ? nil : "Мониторинг ввода"].compactMap { $0 }
-        permsItem.title = missing.isEmpty ? "Права: всё есть" : "Нет прав: " + missing.joined(separator: ", ")
+        let missing = [ax ? nil : tr("Универсальный доступ", "Accessibility"), tap ? nil : tr("Мониторинг ввода", "Input Monitoring")].compactMap { $0 }
+        permsItem.title = missing.isEmpty ? tr("Права: всё есть", "Permissions: all set") : tr("Нет прав: ", "Missing permissions: ") + missing.joined(separator: ", ")
         permsItem.isHidden = missing.isEmpty
         status.button?.title = missing.isEmpty ? "Аа" : "Аа⚠︎"
     }
 
-    let loginItem = NSMenuItem(title: "Запускать при входе", action: #selector(toggleLogin), keyEquivalent: "")
+    let loginItem = NSMenuItem(title: tr("Запускать при входе", "Open at Login"), action: #selector(toggleLogin), keyEquivalent: "")
 
     func setLogin(_ on: Bool) {
         do {
@@ -349,7 +359,8 @@ final class App: NSObject, NSApplicationDelegate {
     func updateLoginItem() {
         let st = SMAppService.mainApp.status
         loginItem.state = st == .enabled ? .on : .off
-        loginItem.title = st == .requiresApproval ? "Запускать при входе (разрешите в Настройках)" : "Запускать при входе"
+        loginItem.title = st == .requiresApproval ? tr("Запускать при входе (разрешите в Настройках)", "Open at Login (allow in System Settings)")
+            : tr("Запускать при входе", "Open at Login")
     }
 
     @objc func toggleCode(_ item: NSMenuItem) {
@@ -430,7 +441,7 @@ final class App: NSObject, NSApplicationDelegate {
         }
         let def = DCSCopyTextDefinition(nil, word as CFString, CFRange(location: 0, length: (word as NSString).length))?
             .takeRetainedValue() as String?
-        hint.show(def ?? "«\(word)» нет в словарях macOS.", at: anchor, width: 420, maxHeight: 320, hideAfter: nil, fontSize: 12)
+        hint.show(def ?? tr("«\(word)» нет в словарях macOS.", "“\(word)” isn’t in the macOS dictionaries."), at: anchor, width: 420, maxHeight: 320, hideAfter: nil, fontSize: 12)
     }
 
     /// Смена раскладки так, как её делает сама macOS: системным сочетанием «Выбрать предыдущий источник

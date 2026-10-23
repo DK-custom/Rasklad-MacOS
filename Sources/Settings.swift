@@ -71,7 +71,8 @@ final class Settings {
     func ensureWordsFile() {
         guard !FileManager.default.fileExists(atPath: wordsURL.path) else { return }
         try? FileManager.default.createDirectory(at: wordsURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? Data("# Слова, которые Rasklad не переключает: по одному в строке, в любой раскладке.\n".utf8).write(to: wordsURL)
+        try? Data(tr("# Слова, которые Rasklad не переключает: по одному в строке, в любой раскладке.\n",
+                     "# Words Rasklad never switches: one per line, in either layout.\n").utf8).write(to: wordsURL)
     }
 }
 
@@ -183,3 +184,14 @@ func previousSourceHotkey() -> (code: Int, flags: UInt64)? {
 func shouldCopySelection(axSelected: String?, codeApp: Bool) -> Bool {
     codeApp ? axSelected?.isEmpty == false : true
 }
+
+/// Язык интерфейса — по предпочитаемым языкам macOS (и языку, выбранному для Rasklad в Настройках):
+/// русский, если он встречается раньше английского; любой другой случай — английский.
+func prefersRussian(_ preferred: [String]) -> Bool {
+    Bundle.preferredLocalizations(from: ["en", "ru"], forPreferences: preferred).first == "ru"
+}
+
+let uiRussian = prefersRussian(Locale.preferredLanguages)
+
+/// Строка интерфейса на двух языках: tr("Готово", "Done").
+func tr(_ ru: String, _ en: String) -> String { uiRussian ? ru : en }
