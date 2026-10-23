@@ -6,6 +6,14 @@ A macOS menu bar utility, a replacement for Punto Switcher: fixes text typed in 
 layout (RU ↔ EN), small typos and an accidental Caps Lock, switches layouts instantly with Fn/🌐
 and shows word definitions from the macOS dictionaries. Swift, no third-party dependencies.
 
+**Free and open-source Punto Switcher alternative for Mac** — an automatic Russian/English keyboard
+layout switcher that fixes text typed in the wrong layout (like Caramba Switcher or Punto Switcher on Windows).
+
+**[⬇ Download Rasklad.dmg](https://github.com/DK-custom/Rasklad-MacOS/releases/latest/download/Rasklad.dmg)**
+· [Website](https://dk-custom.github.io/Rasklad-MacOS/) · macOS 13+, Apple Silicon and Intel · interface in English and Russian
+
+<img src="docs/setup-en.png" width="520" alt="Rasklad setup window: permissions, Fn/🌐 layout switch, correction key">
+
 ## Features
 
 - **Auto-switch on space:** `ghbdtn` → «привет», `рщц` → "how"; short words are decided by lists

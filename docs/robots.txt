@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://dk-custom.github.io/Rasklad-MacOS/sitemap.xml
