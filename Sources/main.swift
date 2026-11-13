@@ -8,6 +8,10 @@ final class App: NSObject, NSApplicationDelegate {
     let settings = Settings()
     let appItem = NSMenuItem(title: "", action: #selector(toggleApp(_:)), keyEquivalent: "")
     var frontApp: NSRunningApplication? // последнее активное приложение, кроме нас
+    let updater = Updater()
+    let updateItem = NSMenuItem(title: "", action: #selector(updateAction), keyEquivalent: "")
+    let autoUpdateItem = NSMenuItem(title: tr("Проверять обновления автоматически", "Check for Updates Automatically"),
+                                    action: #selector(toggleAutoUpdate), keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ n: Notification) {
         // ./Rasklad --onboarding-snapshot out.png [--fresh] — снимок окна настройки и выход
@@ -74,6 +78,13 @@ final class App: NSObject, NSApplicationDelegate {
             if args.contains("--ready") { ob.probe = { .init(ax: true, listen: true, fnOn: true, fnSystemOff: false, capsOff: true) } }
             ob.snapshot(to: args[i + 1], dark: args.contains("--dark"))
             exit(0)
+        }
+
+        // open -n Rasklad.app --args --install-update путь.dmg 1.8.6 — установить обновление из локального DMG (проверка)
+        if let i = args.firstIndex(of: "--install-update"), i + 2 < args.count {
+            if let err = updater.installDMG(URL(fileURLWithPath: args[i + 1]), expected: args[i + 2]) { dlog("проверка обновления: \(err)"); exit(1) }
+            updater.relaunch()
+            return
         }
 
         let properPath = isProperInstallPath(Bundle.main.bundlePath, home: NSHomeDirectory())
@@ -170,6 +181,71 @@ final class App: NSObject, NSApplicationDelegate {
 
         refreshPerms()
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.refreshPerms() }
+        updater.onChange = { [weak self] in self?.updateUpdateItems() }
+        updateUpdateItems()
+        if properPath { updater.schedule() } // из образа диска обновлять нечего
+    }
+
+    func updateUpdateItems() {
+        updateItem.title = updater.busy ? tr("Загрузка обновления…", "Downloading Update…")
+            : updater.available.map { tr("Обновить до \($0.version)…", "Update to \($0.version)…") }
+            ?? tr("Проверить обновления…", "Check for Updates…")
+        updateItem.isEnabled = !updater.busy
+        autoUpdateItem.state = updater.autoCheck ? .on : .off
+    }
+
+    @objc func toggleAutoUpdate() {
+        updater.autoCheck.toggle()
+        updateUpdateItems()
+    }
+
+    @objc func updateAction() {
+        if let r = updater.available { confirmUpdate(r); return }
+        updater.check { [weak self] result in
+            switch result {
+            case .available(let r): self?.confirmUpdate(r)
+            case .upToDate: self?.notice(tr("Установлена последняя версия", "You’re up to date"),
+                                         tr("Новых версий Rasklad нет.", "No newer version of Rasklad is available."))
+            case .failed: self?.notice(tr("Не удалось проверить обновления", "Couldn’t check for updates"),
+                                       tr("Нет связи с GitHub. Попробуйте позже.", "Couldn’t reach GitHub. Try again later."))
+            }
+        }
+    }
+
+    func confirmUpdate(_ r: Release) {
+        let a = NSAlert()
+        a.messageText = tr("Доступен Rasklad \(r.version)", "Rasklad \(r.version) is available")
+        a.informativeText = tr("Скачать с GitHub и установить? Rasklad перезапустится, разрешения сохранятся.",
+                               "Download from GitHub and install? Rasklad will restart; permissions are kept.")
+        a.addButton(withTitle: tr("Обновить", "Update"))
+        a.addButton(withTitle: tr("Позже", "Later"))
+        a.addButton(withTitle: tr("Что нового", "What’s New"))
+        NSApp.activate(ignoringOtherApps: true)
+        switch a.runModal() {
+        case .alertFirstButtonReturn:
+            updater.install(r) { [weak self] message in
+                guard let self else { return }
+                let e = NSAlert()
+                e.messageText = tr("Обновление не установлено", "Update not installed")
+                e.informativeText = message
+                e.addButton(withTitle: tr("Открыть страницу выпуска", "Open Release Page"))
+                e.addButton(withTitle: "OK")
+                NSApp.activate(ignoringOtherApps: true)
+                if e.runModal() == .alertFirstButtonReturn { NSWorkspace.shared.open(r.page ?? Updater.releasesPage) }
+                self.updateUpdateItems()
+            }
+        case .alertThirdButtonReturn:
+            NSWorkspace.shared.open(r.page ?? Updater.releasesPage)
+        default: break
+        }
+    }
+
+    func notice(_ title: String, _ text: String) {
+        let a = NSAlert()
+        a.messageText = title
+        a.informativeText = text
+        NSApp.activate(ignoringOtherApps: true)
+        a.runModal()
     }
 
     /// Запуск из образа диска, «Загрузок» или перемещённой системой копии: автозагрузка запомнила бы
@@ -327,6 +403,9 @@ final class App: NSObject, NSApplicationDelegate {
         item(tr("Настройка…", "Setup…"), #selector(showOnboarding), key: ",")
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         m.addItem(withTitle: "Rasklad \(v)", action: nil, keyEquivalent: "").isEnabled = false
+        add(updateItem)
+        add(autoUpdateItem)
+        updateUpdateItems()
         m.addItem(withTitle: tr("Выход", "Quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         return m
     }

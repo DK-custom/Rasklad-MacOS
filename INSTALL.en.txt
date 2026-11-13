@@ -22,6 +22,8 @@ Requires macOS 13 or later with the “ABC” (or “U.S.”) and “Russian” 
    - “Done”. Reopen the window any time: “Аа” menu → “Setup…”.
 
 4. Open at Login is turned on automatically on first launch (menu item “Open at Login”).
+   Updates: Rasklad checks GitHub once a day; install a new version from the menu “Update to …”
+   (turn checking off with “Check for Updates Automatically”).
 
 5. Fallback layout switch in case Rasklad isn’t running: Keyboard → Keyboard Shortcuts →
    Input Sources → enable “Select the previous input source” (⌃Space).

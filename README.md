@@ -33,6 +33,9 @@ It works with the dictionaries built into macOS: nothing to download, works offl
 - **"IT-термины" dictionary** for macOS Dictionary: FOLDOC (~15k English terms) plus Russian IT terms.
 
 Typed text is never sent anywhere and is not written to the log (`~/Library/Logs/Rasklad.log`).
+The only network request: once a day Rasklad asks GitHub for the latest release (menu → "Check for Updates Automatically" turns it off).
+
+**Updates:** menu → "Update to X…" downloads the release from GitHub, checks that it is signed with the same certificate, replaces the app and restarts it; permissions are kept.
 
 ## Requirements
 

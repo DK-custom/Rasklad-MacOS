@@ -7,7 +7,7 @@ cd "${0:A:h}"
 mkdir -p build
 
 if [[ "$1" == test ]]; then
-  swiftc -swift-version 5 Sources/Layouts.swift Sources/Detector.swift Sources/Settings.swift Sources/Hint.swift Sources/Dictionary.swift Tests/main.swift -o build/selftest
+  swiftc -swift-version 5 Sources/Layouts.swift Sources/Detector.swift Sources/Settings.swift Sources/Hint.swift Sources/Dictionary.swift Sources/Updater.swift Tests/main.swift -o build/selftest
   exec build/selftest
 fi
 

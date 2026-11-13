@@ -545,6 +545,25 @@ check(spotlightEatsBackspace("com.apple.Spotlight") ? "да" : "нет", "да")
 check(spotlightEatsBackspace("com.apple.Safari") ? "да" : "нет", "нет")
 check(spotlightEatsBackspace(nil) ? "да" : "нет", "нет")
 
+// Обновление: версия новее (по числам, не по строке) и разбор ответа GitHub о последнем выпуске
+check(isNewerVersion("1.8.6", than: "1.8.5") ? "новее" : "нет", "новее")
+check(isNewerVersion("1.10.0", than: "1.9.9") ? "новее" : "нет", "новее")      // не строкой: "1.10" > "1.9"
+check(isNewerVersion("2.0", than: "1.9.9") ? "новее" : "нет", "новее")
+check(isNewerVersion("1.8.5", than: "1.8.5") ? "новее" : "нет", "нет")
+check(isNewerVersion("1.8.4", than: "1.8.5") ? "новее" : "нет", "нет")
+check(isNewerVersion("1.8", than: "1.8.0") ? "новее" : "нет", "нет")
+check(isNewerVersion("abc", than: "1.8.5") ? "новее" : "нет", "нет")
+do {
+    let json = #"{"tag_name":"v1.8.6","html_url":"https://github.com/DK-custom/Rasklad-MacOS/releases/tag/v1.8.6","assets":[{"name":"notes.txt","browser_download_url":"https://x/notes.txt"},{"name":"Rasklad.dmg","browser_download_url":"https://github.com/DK-custom/Rasklad-MacOS/releases/download/v1.8.6/Rasklad.dmg"}]}"#
+    let r = parseLatestRelease(Data(json.utf8))
+    check(r.map { "\($0.version) \($0.dmg.lastPathComponent)" } ?? "nil", "1.8.6 Rasklad.dmg")
+    check(parseLatestRelease(Data(#"{"tag_name":"v1.8.6","assets":[]}"#.utf8)) == nil ? "nil" : "есть", "nil")   // нет DMG
+    check(parseLatestRelease(Data("не json".utf8)) == nil ? "nil" : "есть", "nil")
+    // скачиваем только с GitHub по https
+    let evil = #"{"tag_name":"v9","assets":[{"name":"Rasklad.dmg","browser_download_url":"http://evil.example/Rasklad.dmg"}]}"#
+    check(parseLatestRelease(Data(evil.utf8)) == nil ? "nil" : "есть", "nil")
+}
+
 // Язык интерфейса: русский, если он раньше английского в предпочитаемых языках; иначе английский
 check(prefersRussian(["ru-RU", "en-US"]) ? "ru" : "en", "ru")
 check(prefersRussian(["en-US", "ru-RU"]) ? "ru" : "en", "en")
