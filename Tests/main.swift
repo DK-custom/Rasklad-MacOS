@@ -539,6 +539,12 @@ do {
     check("\(forgetLearnedWord("  "))", "empty")
 }
 
+// Spotlight (com.apple.campo в macOS 26+, раньше com.apple.Spotlight) тратит первый Backspace на подсказку
+check(spotlightEatsBackspace("com.apple.campo") ? "да" : "нет", "да")
+check(spotlightEatsBackspace("com.apple.Spotlight") ? "да" : "нет", "да")
+check(spotlightEatsBackspace("com.apple.Safari") ? "да" : "нет", "нет")
+check(spotlightEatsBackspace(nil) ? "да" : "нет", "нет")
+
 // Язык интерфейса: русский, если он раньше английского в предпочитаемых языках; иначе английский
 check(prefersRussian(["ru-RU", "en-US"]) ? "ru" : "en", "ru")
 check(prefersRussian(["en-US", "ru-RU"]) ? "ru" : "en", "en")

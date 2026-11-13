@@ -25,6 +25,21 @@ final class App: NSObject, NSApplicationDelegate {
                         var role: CFTypeRef?
                         AXUIElementCopyAttributeValue(f, kAXRoleAttribute as CFString, &role)
                         lines += ["поле: \(role as? String ?? "?"), блок кода: \(caretInCode(caretAncestry()) ? "да" : "нет")"]
+                        // значение, курсор и выделение — для полей с подсказками (Spotlight)
+                        for a in ["AXValue", "AXSelectedText", "AXSelectedTextRange", "AXNumberOfCharacters", "AXPlaceholderValue"] {
+                            var v: CFTypeRef?
+                            let ok = AXUIElementCopyAttributeValue(f, a as CFString, &v) == .success
+                            lines.append("\(a): \(ok ? String(describing: v!) : "—")")
+                        }
+                        var kids: CFTypeRef?
+                        if AXUIElementCopyAttributeValue(f, kAXChildrenAttribute as CFString, &kids) == .success, let k = kids as? [AXUIElement] {
+                            for c in k {
+                                var r: CFTypeRef?, v: CFTypeRef?
+                                AXUIElementCopyAttributeValue(c, kAXRoleAttribute as CFString, &r)
+                                AXUIElementCopyAttributeValue(c, kAXValueAttribute as CFString, &v)
+                                lines.append("  дочерний \(r as? String ?? "?"): \(v.map { String(describing: $0) } ?? "—")")
+                            }
+                        }
                     } else { lines.append("нет фокуса, AX=\(AXIsProcessTrusted())") }
                     try? ((frontAppID() ?? "?") + "\n" + lines.joined(separator: "\n") + "\n").write(toFile: args[i + 2], atomically: true, encoding: .utf8)
                     exit(0)

@@ -231,6 +231,9 @@ final class KeyTap {
     }
 
     private func retype(erase: Int, with text: String, switchTo lang: Lang) {
+        // Spotlight тратит первый Backspace на свою подсказку справа от текста («— Искать в …»),
+        // а системе о ней не сообщает (ни выделения, ни лишних символов) — стираем на один больше.
+        let erase = erase + (spotlightEatsBackspace(frontAppID()) ? 1 : 0)
         if layouts.current() != lang { selectLayout(layouts.source(lang)) } // та же раскладка — не дёргаем индикатор
         for _ in 0..<erase { postKey(CGKeyCode(kVK_Delete)) }
         for ch in text { postChar(ch, key: layouts.key(for: ch, in: lang)) }

@@ -195,3 +195,6 @@ let uiRussian = prefersRussian(Locale.preferredLanguages)
 
 /// Строка интерфейса на двух языках: tr("Готово", "Done").
 func tr(_ ru: String, _ en: String) -> String { uiRussian ? ru : en }
+
+/// Поле Spotlight показывает справа от текста подсказку («— Искать в …») и тратит на неё первый Backspace.
+func spotlightEatsBackspace(_ appID: String?) -> Bool { appID == "com.apple.campo" || appID == "com.apple.Spotlight" }
