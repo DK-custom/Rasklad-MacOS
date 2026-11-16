@@ -20,11 +20,12 @@ func correction(keys: [Int], current: Lang, _ l: Layouts, context: Lang? = nil) 
     guard typed.count == keys.count, other.count == keys.count else { return nil }
     let letters = max(other.filter(\.isLetter).count, typed.filter(\.isLetter).count)
     if (1...3).contains(letters) {
-        // короткие: только по спискам частых слов; сравниваем позиции, где буква хотя бы в одной
-        // раскладке (на месте буквы может стоять знак: «ё» на клавише \, «ю» на точке)
-        let pairs = zip(typed, other).filter { $0.0.isLetter || $0.1.isLetter }
-        let o = String(pairs.map(\.1)).lowercased(), t = String(pairs.map(\.0)).lowercased()
-        guard commonShort[target]!.contains(o), !commonShort[current]!.contains(t) else { return nil }
+        // короткие: только по спискам частых слов. Посреди фразы на языке раскладки не трогаем
+        // («5 шт» не «5 in») — слово неоднозначное, следующее слово на другом языке исправит оба.
+        // Русские сокращения, совпадающие с частыми английскими (шт/in, рук/her), без контекста
+        // (одна ячейка таблицы) тоже не трогаем; в английской фразе — исправляем.
+        let abbreviation = shortAbbreviations[current]!.contains(typed.lowercased())
+        guard shortSwitches(typed, other, current), context != current, context == target || !abbreviation else { return nil }
         return (other, target)
     }
     guard letters >= 2, isWord(other, target) else { return nil }
@@ -32,10 +33,31 @@ func correction(keys: [Int], current: Lang, _ l: Layouts, context: Lang? = nil) 
     return context == target && letters >= 3 ? (other, target) : nil
 }
 
-/// Слово есть в обоих языках («руку» / here) — само по себе не решить, решает следующее слово фразы.
+/// Сокращения, которые в другой раскладке дают частое слово: «шт» — in, «рук» — her.
+let shortAbbreviations: [Lang: Set<String>] = [.ru: ["шт", "рук"], .en: []]
+
+/// Язык фразы после слова: исправленное — язык исправления; неоднозначное («руку», «шт») язык
+/// не задаёт — решит следующее слово; иначе — текущая раскладка.
+func phraseLangAfter(fixed: Lang?, current: Lang, ambiguous: Bool) -> Lang? {
+    fixed ?? (ambiguous ? nil : current)
+}
+
+/// Короткое слово: в другой раскладке — частое слово, а набранное частым не является («шт» → in).
+/// Сравниваем позиции, где буква хотя бы в одной раскладке (на месте буквы может стоять знак:
+/// «ё» на клавише \, «ю» на точке).
+func shortSwitches(_ typed: String, _ other: String, _ current: Lang) -> Bool {
+    let pairs = zip(typed, other).filter { $0.0.isLetter || $0.1.isLetter }
+    let o = String(pairs.map(\.1)).lowercased(), t = String(pairs.map(\.0)).lowercased()
+    return commonShort[current.other]!.contains(o) && !commonShort[current]!.contains(t)
+}
+
+/// Слово есть в обоих языках («руку» / here, короткое «шт» / in) — само по себе не решить,
+/// решает следующее слово фразы.
 func isAmbiguous(keys: [Int], current: Lang, _ l: Layouts) -> Bool {
     let typed = text(keys, l.chars(current)), other = text(keys, l.chars(current.other))
-    guard typed.count == keys.count, other.count == keys.count, other.filter(\.isLetter).count >= 3 else { return false }
+    guard typed.count == keys.count, other.count == keys.count else { return false }
+    let letters = max(other.filter(\.isLetter).count, typed.filter(\.isLetter).count)
+    if (1...3).contains(letters) { return shortSwitches(typed, other, current) }
     return isWord(typed, current) && isWord(other, current.other)
 }
 

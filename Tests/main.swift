@@ -77,7 +77,9 @@ do {
         let inv = Dictionary(l.chars(lang).map { ($1, $0) }, uniquingKeysWith: min)
         for w in commonShort[lang]!.sorted() {
             let k = w.compactMap { inv[$0] }.map { encodeKey(code: $0 / 2, shift: $0 % 2 == 1, caps: false) }
-            let fixed = correction(keys: k, current: lang.other, l)?.text
+            // сокращения (шт, рук) без контекста не трогаются — проверяем их внутри фразы на нужном языке
+            let abbr = shortAbbreviations[lang.other]!.contains(text(k, l.chars(lang.other)).lowercased())
+            let fixed = correction(keys: k, current: lang.other, l, context: abbr ? lang : nil)?.text
             if fixed != w { bad.append("\(text(k, l.chars(lang.other)))→\(fixed ?? "nil")≠\(w)") }
             if let kept = correction(keys: k, current: lang, l) { bad.append("\(w) заменено на \(kept.text)") }
         }
@@ -376,6 +378,25 @@ do {
     check(g.map { "\($0.erase)|\($0.text)" } ?? "nil", "3|we")                  // без предыдущего — только слово
     let h = phraseFix(prev: ks("руку", .ru), keys: ks("дай", .ru), current: .ru, l, context: nil)
     check(h.map { $0.text } ?? "nil", "nil")                                       // «руку дай» — русская фраза, не трогаем
+
+    // Короткое слово посреди фразы на языке раскладки — не трогаем («5 шт»), но помним:
+    // следующее слово на другом языке исправит оба («шт ерут» → «in then»)
+    check(decide("шт", in: .ru), "nil")                                           // одно в ячейке таблицы — сокращение «шт»
+    check(decide("рук", in: .ru), "nil")
+    check(decide("рук", in: .ru, context: .en), "her")
+    check(decide("цу", in: .ru), "we")                                            // не сокращение — как раньше
+    check(decide("шт", in: .ru, context: .en), "in")                              // английская фраза
+    check(decide("шт", in: .ru, context: .ru), "nil")                             // русская фраза — «шт»
+    check(decide("e", in: .en, context: .ru), "у")                                // раскладка не та, что у фразы — исправляем
+    check(decide("in", in: .en, context: .ru), "nil")                             // частое английское — никогда
+    check(isAmbiguous(keys: ks("шт", .ru), current: .ru, l) ? "да" : "нет", "да")
+    check(isAmbiguous(keys: ks("на", .ru), current: .ru, l) ? "да" : "нет", "нет") // частое русское — не сомневаемся
+    let p = phraseFix(prev: ks("шт", .ru), keys: ks("ерут", .ru), current: .ru, l, context: .ru)
+    check(p.map { "\($0.erase)|\($0.text)|\($0.target)" } ?? "nil", "8|in then|en")
+    let p0 = phraseFix(prev: ks("шт", .ru), keys: ks("еру", .ru), current: .ru, l, context: nil)
+    check(p0.map { $0.text } ?? "nil", "in the")                                  // «шт» в начале фразы, дальше английский
+    let q = phraseFix(prev: ks("шт", .ru), keys: ks("купил", .ru), current: .ru, l, context: .ru)
+    check(q.map { $0.text } ?? "nil", "nil")                                       // дальше по-русски — «шт» остаётся
 }
 do {
     var t = TypingState()
@@ -387,6 +408,12 @@ do {
     _ = t.keyDown(code: 51, key: 0, char: nil, modified: false)                   // Backspace в предыдущее слово
     check(t.ambiguousPrev == nil ? "нет" : "есть", "нет")
 }
+
+// Язык фразы после слова: исправленное — язык исправления, неоднозначное («руку», «шт») — не задаёт,
+// иначе «руку цу» не исправится: «цу» сочтётся русской фразой
+check("\(phraseLangAfter(fixed: .en, current: .ru, ambiguous: false).map { "\($0)" } ?? "nil")", "en")
+check("\(phraseLangAfter(fixed: nil, current: .ru, ambiguous: false).map { "\($0)" } ?? "nil")", "ru")
+check("\(phraseLangAfter(fixed: nil, current: .ru, ambiguous: true).map { "\($0)" } ?? "nil")", "nil")
 
 // Fn: переключаем при нажатии (индикатор «РУ/A» у курсора показывает раскладку сразу),
 // а если, пока Fn зажата, нажали другую клавишу или модификатор (Fn+стрелка) — откат

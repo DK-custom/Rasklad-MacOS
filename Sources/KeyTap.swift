@@ -168,7 +168,10 @@ final class KeyTap {
             result = (keys.count + 1, c, typed, cur); caseFixed = true
         }
         if debugWords { dlog("слово cur=\(cur) typed=\(typed) fix=\(result?.text ?? "nil")") }
-        guard let result else { return (cur, isAmbiguous(keys: keys, current: cur, layouts)) }
+        guard let result else {
+            let ambiguous = isAmbiguous(keys: keys, current: cur, layouts)
+            return (phraseLangAfter(fixed: nil, current: cur, ambiguous: ambiguous), ambiguous)
+        }
         if caseFixed, capsLock() { setCapsLock(false) } // Caps Lock включили случайно — выключаем
         lastFix = (result.typed, cur, result.text)
         retype(erase: result.erase, with: result.text + " ", switchTo: result.target) // erase включает набранный пробел
