@@ -80,6 +80,8 @@ final class App: NSObject, NSApplicationDelegate {
             exit(0)
         }
 
+        Updater.waitForPreviousInstance(args)
+
         // open -n Rasklad.app --args --install-update путь.dmg 1.8.6 — установить обновление из локального DMG (проверка)
         if let i = args.firstIndex(of: "--install-update"), i + 2 < args.count {
             if let err = updater.installDMG(URL(fileURLWithPath: args[i + 1]), expected: args[i + 2]) { dlog("проверка обновления: \(err)"); exit(1) }

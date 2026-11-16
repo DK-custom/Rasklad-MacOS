@@ -167,14 +167,27 @@ final class Updater {
         return SecStaticCodeCheckValidity(code, flags, req) == errSecSuccess
     }
 
-    /// Запустить новую копию после выхода этой (иначе open лишь активирует уходящую).
+    /// Запустить новую копию и выйти. Вспомогательный процесс («дождись выхода и open») не годится:
+    /// он в той же задаче launchd, что и мы, и при нашем выходе его обрывают — новая копия не стартует.
+    /// Поэтому новая копия стартует сразу, с `--wait-pid`, и сама ждёт, пока эта завершится.
     func relaunch() {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/sh")
-        p.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; /usr/bin/open \"$0\"",
-                       Bundle.main.bundlePath, String(ProcessInfo.processInfo.processIdentifier)]
-        try? p.run()
-        NSApp.terminate(nil)
+        let cfg = NSWorkspace.OpenConfiguration()
+        cfg.createsNewApplicationInstance = true
+        cfg.arguments = ["--wait-pid", String(getpid())]
+        NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: Bundle.main.bundlePath), configuration: cfg) { _, error in
+            DispatchQueue.main.async {
+                if let error { dlog("перезапуск не удался: \(error.localizedDescription)") }
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
+    /// Запуск после обновления: дождаться выхода прежней копии (не дольше 15 с), иначе две копии
+    /// одновременно перехватывали бы клавиатуру.
+    static func waitForPreviousInstance(_ args: [String]) {
+        guard let i = args.firstIndex(of: "--wait-pid"), i + 1 < args.count, let pid = pid_t(args[i + 1]) else { return }
+        let deadline = Date().addingTimeInterval(15)
+        while kill(pid, 0) == 0, Date() < deadline { usleep(100_000) }
     }
 
     private func run(_ tool: String, _ args: [String]) -> Bool {
