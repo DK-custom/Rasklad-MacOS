@@ -78,7 +78,7 @@ do {
         for w in commonShort[lang]!.sorted() {
             let k = w.compactMap { inv[$0] }.map { encodeKey(code: $0 / 2, shift: $0 % 2 == 1, caps: false) }
             // сокращения (шт, рук) без контекста не трогаются — проверяем их внутри фразы на нужном языке
-            let abbr = shortAbbreviations[lang.other]!.contains(text(k, l.chars(lang.other)).lowercased())
+            let abbr = isAbbreviation(text(k, l.chars(lang.other)), lang.other)
             let fixed = correction(keys: k, current: lang.other, l, context: abbr ? lang : nil)?.text
             if fixed != w { bad.append("\(text(k, l.chars(lang.other)))→\(fixed ?? "nil")≠\(w)") }
             if let kept = correction(keys: k, current: lang, l) { bad.append("\(w) заменено на \(kept.text)") }
@@ -598,5 +598,31 @@ check(prefersRussian(["de-DE", "ru-RU"]) ? "ru" : "en", "ru")      // немец
 check(prefersRussian(["de-DE", "fr-FR"]) ? "ru" : "en", "en")      // ни одного из двух — английский
 check(prefersRussian(["uk-UA", "en-US"]) ? "ru" : "en", "en")
 check(prefersRussian([]) ? "ru" : "en", "en")
+
+// Табличные сокращения (issue #1): без английского контекста не трогаем ни раскладкой, ни опечаткой, ни регистром
+for w in ["шт", "ру", "руб", "упак", "компл", "табл", "разд", "кг", "чел", "экз", "ШТ", "мВт", "табл.", "руб.", "упак.", "рук."] {
+    check("\(w): " + decide(w, in: .ru, caps: false), "\(w): nil")
+    check("\(w) в русской: " + decide(w, in: .ru, context: .ru), "\(w) в русской: nil")
+    check("\(w) опечатка: " + (typoFix(w, lang: .ru) == nil || !isAbbreviation(w, .ru) ? "нет" : "да"), "\(w) опечатка: нет")
+    check(isAbbreviation(w, .ru) ? "сокр" : w, "сокр")
+}
+check(decide("шт", in: .ru, context: .en), "in")                // hello шт → hello in
+check(decide("ру", in: .ru, context: .en), "he")
+check(decide("упак", in: .ru, context: .en), "nil")             // hello упак — остаётся
+check(isAbbreviation("то", .ru) ? "да" : "нет", "нет")          // служебные слова — не сокращения
+check(isAbbreviation("in", .en) ? "да" : "нет", "нет")
+// После числа — независимо от языка фразы; через Tab/новую строку число не переносится
+check(afterNumber("5 шт") ? "да" : "нет", "да")
+check(afterNumber("5шт") ? "да" : "нет", "да")
+check(afterNumber("12,5 кг") ? "да" : "нет", "да")
+check(afterNumber("1 000 руб") ? "да" : "нет", "да")
+check(afterNumber("hello 5 руб.") ? "да" : "нет", "да")
+check(afterNumber("5\u{00A0}шт") ? "да" : "нет", "да")
+check(afterNumber("5\u{202F}шт") ? "да" : "нет", "да")
+check(afterNumber("5\tшт") ? "да" : "нет", "нет")
+check(afterNumber("5\nшт") ? "да" : "нет", "нет")
+check(afterNumber("купил шт") ? "да" : "нет", "нет")
+check(afterNumber("шт") ? "да" : "нет", "нет")
+check(afterNumber("5  шт") ? "да" : "нет", "нет")
 
 print("all ok, map size en→ru:", l.enToRu.count)

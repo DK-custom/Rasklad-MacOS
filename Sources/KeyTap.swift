@@ -142,6 +142,8 @@ final class KeyTap {
         }
         if why != nil { return (nil, false) }
         var typed = text(keys, layouts.chars(cur))
+        // «5 шт», «12,5 кг»: сокращение после числа — не трогаем при любом языке фразы и язык не меняем
+        if isAbbreviation(typed, cur), afterNumber(typing.recent) { return (nil, false) }
         let words = settings.exceptionWords()
         var result: (erase: Int, text: String, typed: String, target: Lang)?
         if Set(typing.langs.compactMap { $0 }).count > 1 {
@@ -164,7 +166,7 @@ final class KeyTap {
         // случайный Caps Lock посреди слова: и в исправленном слове, и в обычном
         var caseFixed = false
         if let r = result, let c = caseFix(r.text, r.target) { result?.text = c; caseFixed = true }
-        else if result == nil, !words.contains(exceptionKey(typed)), let c = caseFix(typed, cur) {
+        else if result == nil, !words.contains(exceptionKey(typed)), !isAbbreviation(typed, cur), let c = caseFix(typed, cur) {
             result = (keys.count + 1, c, typed, cur); caseFixed = true
         }
         if debugWords { dlog("слово cur=\(cur) typed=\(typed) fix=\(result?.text ?? "nil")") }

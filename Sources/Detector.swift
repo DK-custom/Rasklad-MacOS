@@ -19,22 +19,43 @@ func correction(keys: [Int], current: Lang, _ l: Layouts, context: Lang? = nil) 
     let other = text(keys, l.chars(target))
     guard typed.count == keys.count, other.count == keys.count else { return nil }
     let letters = max(other.filter(\.isLetter).count, typed.filter(\.isLetter).count)
+    let abbreviation = isAbbreviation(typed, current)
     if (1...3).contains(letters) {
         // короткие: только по спискам частых слов. Посреди фразы на языке раскладки не трогаем
         // («5 шт» не «5 in») — слово неоднозначное, следующее слово на другом языке исправит оба.
         // Русские сокращения, совпадающие с частыми английскими (шт/in, рук/her), без контекста
         // (одна ячейка таблицы) тоже не трогаем; в английской фразе — исправляем.
-        let abbreviation = shortAbbreviations[current]!.contains(typed.lowercased())
         guard shortSwitches(typed, other, current), context != current, context == target || !abbreviation else { return nil }
         return (other, target)
     }
-    guard letters >= 2, isWord(other, target) else { return nil }
+    guard letters >= 2, isWord(other, target), context == target || !abbreviation else { return nil }
     if !isWord(typed, current) { return (other, target) }
     return context == target && letters >= 3 ? (other, target) : nil
 }
 
-/// Сокращения, которые в другой раскладке дают частое слово: «шт» — in, «рук» — her.
-let shortAbbreviations: [Lang: Set<String>] = [.ru: ["шт", "рук"], .en: []]
+/// Табличные сокращения и единицы: без английского контекста не меняем ни раскладку («шт» — in,
+/// «рук» — her, «ру» — he), ни опечатку, ни регистр («упак», «мВт»); после числа — никогда.
+/// Служебные слова (то, в, с) сюда не входят: они задают язык фразы.
+let tableAbbreviations: [Lang: Set<String>] = [.ru: Set("""
+    шт ед чел экз упак пач компл руб коп тыс млн млрд гр табл разд рук ру стр рис илл прим
+    кг г мг т ц л мл м см мм км га вт квт мвт гвт ч мин сек кв куб
+    """.split(whereSeparator: \.isWhitespace).map(String.init)), .en: []]
+
+/// Набранное (с точкой, в любом регистре, с цифрами впереди: «5шт», «руб.») — табличное сокращение.
+func isAbbreviation(_ typed: String, _ lang: Lang) -> Bool {
+    let core = typed.filter(\.isLetter).lowercased()
+    return !core.isEmpty && typed.drop(while: \.isNumber).allSatisfy({ $0.isLetter || $0 == "." })
+        && tableAbbreviations[lang]!.contains(core)
+}
+
+/// Слово в конце `recent` идёт сразу за числом: «5 шт», «5шт», «12,5 кг», «1 000 руб», через обычный
+/// или неразрывный пробел. Tab и новая строка — уже другая ячейка: числа там нет.
+func afterNumber(_ recent: String) -> Bool {
+    var s = Substring(recent)
+    while let c = s.last, c.isLetter || c == "." { s.removeLast() }
+    if let c = s.last, " \u{00A0}\u{202F}".contains(c) { s.removeLast() }
+    return s.last?.isNumber ?? false
+}
 
 /// Язык фразы после слова: исправленное — язык исправления; неоднозначное («руку», «шт») язык
 /// не задаёт — решит следующее слово; иначе — текущая раскладка.
@@ -271,7 +292,7 @@ func layoutTypoFix(keys: [Int], current: Lang, _ l: Layouts) -> (text: String, t
     let target = current.other
     let typed = text(keys, l.chars(current)), other = text(keys, l.chars(target))
     guard typed.count == keys.count, other.count == keys.count, other.filter(\.isLetter).count >= 5,
-          !isWord(typed, current), typoFix(typed, lang: current) == nil,
+          !isWord(typed, current), !isAbbreviation(typed, current), typoFix(typed, lang: current) == nil,
           let fixed = typoFix(other, lang: target), inDictionaries(fixed) else { return nil }
     return (fixed, target)
 }
@@ -282,7 +303,8 @@ func inDictionaries(_ word: String) -> Bool {
 }
 
 func typoFix(_ typed: String, lang: Lang) -> String? {
-    typoFix(typed) { core in
+    guard !isAbbreviation(typed, lang) else { return nil } // «упак», «компл» — не опечатки
+    return typoFix(typed) { core in
         guard !isWord(core, lang), let fixed = NSSpellChecker.shared.correction(
             forWordRange: NSRange(location: 0, length: (core as NSString).length), in: core,
             language: lang.rawValue, inSpellDocumentWithTag: 0) else { return nil }
