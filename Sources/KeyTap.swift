@@ -169,6 +169,8 @@ final class KeyTap {
         else if result == nil, !words.contains(exceptionKey(typed)), !isAbbreviation(typed, cur), let c = caseFix(typed, cur) {
             result = (keys.count + 1, c, typed, cur); caseFixed = true
         }
+        let tail = typing.punctAfter // знак через ⌃⌥ после слова — уже в поле: стереть и вернуть как набран
+        if !tail.isEmpty, let r = result { result = (r.erase + tail.count, r.text + tail, r.typed + tail, r.target) }
         if debugWords { dlog("слово cur=\(cur) typed=\(typed) fix=\(result?.text ?? "nil")") }
         guard let result else {
             let ambiguous = isAmbiguous(keys: keys, current: cur, layouts)

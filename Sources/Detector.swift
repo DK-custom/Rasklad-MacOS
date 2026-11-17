@@ -67,7 +67,7 @@ func isAbbreviation(_ typed: String, _ lang: Lang) -> Bool {
 /// или неразрывный пробел. Tab и новая строка — уже другая ячейка: числа там нет.
 func afterNumber(_ recent: String) -> Bool {
     var s = Substring(recent)
-    while let c = s.last, c.isLetter || c == "." { s.removeLast() }
+    while let c = s.last, c.isLetter || ",.;:!?".contains(c) { s.removeLast() }
     if let c = s.last, " \u{00A0}\u{202F}".contains(c) { s.removeLast() }
     return s.last?.isNumber ?? false
 }
@@ -398,6 +398,8 @@ struct TypingState {
     /// Только что законченное слово — пока после пробела ничего не нажимали (для ручной правки клавишей
     /// исправления). Любая клавиша, клик, Enter, Backspace — забыть: курсор мог уйти.
     private(set) var lastWord: (keys: [Int], langs: [Lang?])?
+    /// Знаки, набранные через ⌃⌥ сразу после слова («cegth» + ⌃⌥Б): слово проверяем на пробеле, знаки дописываем.
+    private(set) var punctAfter = ""
 
     /// keyDown; `char` — символ в текущей раскладке; `modified` — с ⌘, ⌃ или ⌥.
     /// `.wordEnd` — пробел: проверить слово, затем `endWord()`.
@@ -408,15 +410,18 @@ struct TypingState {
         case 49: return .wordEnd                                       // пробел
         case 51:                                                       // Backspace
             if keys.isEmpty { ambiguousPrev = nil }                    // стирают уже предыдущее слово
-            if !keys.isEmpty { keys.removeLast(); langs.removeLast() }
+            if !punctAfter.isEmpty { punctAfter.removeLast() }
+            else if !keys.isEmpty { keys.removeLast(); langs.removeLast() }
             if !recent.isEmpty { recent.removeLast() }
         case 36, 48:                                                   // Enter, Tab: не переключаем
+            punctAfter = ""
             keys.removeAll()
             langs.removeAll()
             phraseLang = nil
             ambiguousPrev = nil
             remember(code == 36 ? "\n" : "\t")
         case 0...50:
+            if !punctAfter.isEmpty { punctAfter = ""; keys.removeAll(); langs.removeAll() } // «a,b» — уже не то слово
             keys.append(key)
             langs.append(lang)
             if let char { remember(String(char)) }
@@ -428,6 +433,7 @@ struct TypingState {
     /// `lang` — на каком языке оказалось слово (nil — не знаем, язык фразы прежний).
     /// `ambiguous` — слово есть в обоих языках: следующее слово может исправить и его.
     mutating func endWord(lang: Lang? = nil, ambiguous: Bool = false) {
+        punctAfter = ""
         ambiguousPrev = ambiguous && !keys.isEmpty ? keys : nil
         lastWord = keys.isEmpty ? nil : (keys, langs)
         keys.removeAll()
@@ -445,12 +451,13 @@ struct TypingState {
 
     /// Знак набран сочетанием (⌃⌥Б → «,»): в слово не добавляем — клавиша Б при следующем пробеле
     /// прочиталась бы как буква, — но в недавний текст пишем, чтобы видеть пробел перед знаком.
+    /// Сразу после слова знак запоминаем отдельно: слово проверим на пробеле и допишем знак как набран.
     mutating func punctTyped(_ ch: Character) {
-        keys.removeAll()
-        langs.removeAll()
-        ambiguousPrev = nil
         lastWord = nil
         remember(String(ch))
+        if !keys.isEmpty { punctAfter.append(ch); return } // слово перед знаком — проверим на пробеле
+        langs.removeAll()
+        ambiguousPrev = nil
     }
 
     /// Пробел перед только что набранным знаком убран — так же и в недавнем тексте. Сам знак из буфера
@@ -465,6 +472,7 @@ struct TypingState {
     }
 
     mutating func reset() {
+        punctAfter = ""
         lastWord = nil
         keys.removeAll()
         langs.removeAll()

@@ -522,6 +522,20 @@ do {
     t.punctTyped(",")
     check("\(t.keys.count) [\(t.recent)]", "0 [ab ,]")      // в слово не попал, недавний текст сохранён
 }
+do { // знак через ⌃⌥ сразу после слова: слово помним до пробела, знак — отдельно («cegth,» → «супер,»)
+    var t = TypingState()
+    for (code, ch) in [(0, "a"), (11, "b")] as [(Int, Character)] { _ = t.keyDown(code: code, key: code * 4, char: ch, modified: false) }
+    t.punctTyped(",")
+    check("\(t.keys.count) [\(t.punctAfter)] [\(t.recent)]", "2 [,] [ab,]")
+    _ = t.keyDown(code: 51, key: 0, char: nil, modified: false)               // Backspace стирает знак
+    check("\(t.keys.count) [\(t.punctAfter)]", "2 []")
+    t.punctTyped(".")
+    _ = t.keyDown(code: 0, key: 0, char: "a", modified: false)                 // буква после знака — новое слово
+    check("\(t.keys.count) [\(t.punctAfter)]", "1 []")
+    t.punctTyped("!")
+    t.endWord()
+    check("\(t.keys.count) [\(t.punctAfter)]", "0 []")
+}
 
 // Место запуска: только «Программы» — иначе автозагрузка запомнит временный путь
 check(isProperInstallPath("/Applications/Rasklad.app", home: "/Users/u") ? "да" : "нет", "да")
@@ -624,6 +638,7 @@ check(afterNumber("5\nшт") ? "да" : "нет", "нет")
 check(afterNumber("купил шт") ? "да" : "нет", "нет")
 check(afterNumber("шт") ? "да" : "нет", "нет")
 check(afterNumber("5  шт") ? "да" : "нет", "нет")
+check(afterNumber("5 шт,") ? "да" : "нет", "да")                // знак через ⌃⌥ уже в недавнем тексте
 
 // «фшк ь6» → «air m6»: частые трёхбуквенные — по списку; буква с цифрой (модели: m6, a4) — только RU→EN,
 // в английской фразе или если так по-русски не начинается слово (ь, ъ, ы)
