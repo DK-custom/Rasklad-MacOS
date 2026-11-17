@@ -638,4 +638,17 @@ check(decide("рф", in: .ru), "nil")                            // словар
 check(decide("мвд", in: .ru), "nil")
 check(decide("пгт", in: .ru), "nil")
 
+// Знак в конце набран своей клавишей в английской раскладке («,» — это «б»): слово целиком не нашлось —
+// исправляем слово без знака, знак оставляем как набран
+check(decide("cegth,", in: .en), "супер,")
+check(decide("ghbdtn.", in: .en), "привет.")
+check(decide("Ghbdtn!", in: .en), "Привет!")
+check(decide("yt,", in: .en), "не,")
+check(decide("uhb,", in: .en), "гриб")                         // целиком — слово: «б» буква
+check(decide("hello,", in: .en), "nil")
+check(decide("hi,", in: .en), "nil")
+
+check(decide("руддщ,", in: .ru), "hello,")                     // и обратно: знак русской раскладки (⇧6) сохраняется
+check(decide("руддщ.", in: .ru), "hello.")
+check(decide("Руддщ!", in: .ru), "Hello!")
 print("all ok, map size en→ru:", l.enToRu.count)

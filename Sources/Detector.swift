@@ -14,6 +14,20 @@ func isWord(_ text: String, _ lang: Lang) -> Bool {
 /// `context` — язык предыдущих слов фразы: слово, которое есть в обоих языках («руку»/here),
 /// переключаем, только если фраза уже идёт на другом языке.
 func correction(keys: [Int], current: Lang, _ l: Layouts, context: Lang? = nil) -> (text: String, target: Lang)? {
+    // Знак в конце обычно набран верно, а слово — в другой раскладке: «cegth,» (не «суперб») → «супер,»,
+    // «руддщ,» (не «hello^») → «hello,». Если в другой раскладке на месте знака буква («,» — «б»), сначала
+    // целиком («j,» → «об», «uhb,» → «гриб»), иначе сначала слово без знака; знак — как набран.
+    let typed = text(keys, l.chars(current))
+    let tail = typed.reversed().prefix { ",.;:!?".contains($0) }.count
+    let whole = { wholeCorrection(keys: keys, current: current, l, context: context) }
+    guard typed.count == keys.count, tail > 0, tail < keys.count else { return whole() }
+    let core = { wholeCorrection(keys: Array(keys.dropLast(tail)), current: current, l, context: context)
+        .map { ($0.text + typed.suffix(tail), $0.target) } }
+    return text(Array(keys.suffix(tail)), l.chars(current.other)).allSatisfy(\.isLetter)
+        ? whole() ?? core() : core() ?? whole()
+}
+
+private func wholeCorrection(keys: [Int], current: Lang, _ l: Layouts, context: Lang?) -> (text: String, target: Lang)? {
     let target = current.other
     let typed = text(keys, l.chars(current))
     let other = text(keys, l.chars(target))
