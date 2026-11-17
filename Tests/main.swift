@@ -625,4 +625,17 @@ check(afterNumber("купил шт") ? "да" : "нет", "нет")
 check(afterNumber("шт") ? "да" : "нет", "нет")
 check(afterNumber("5  шт") ? "да" : "нет", "нет")
 
+// «фшк ь6» → «air m6»: частые трёхбуквенные — по списку; буква с цифрой (модели: m6, a4) — только RU→EN,
+// в английской фразе или если так по-русски не начинается слово (ь, ъ, ы)
+check(decide("фшк", in: .ru), "air")
+check(decide("ь6", in: .ru), "m6")
+check(decide("ь6", in: .ru, context: .ru), "m6")
+check(decide("ф4", in: .ru, context: .en), "a4")
+check(decide("ф4", in: .ru), "a4")                             // «a» — частое слово, как и раньше
+check(decide("в5", in: .ru, context: .en), "nil")              // «в» — частое русское
+check(decide("x5", in: .en, context: .ru), "nil")              // латиница с цифрой — модель, не трогаем
+check(decide("рф", in: .ru), "nil")                            // словарь дал бы ha / vdl — не по словарю
+check(decide("мвд", in: .ru), "nil")
+check(decide("пгт", in: .ru), "nil")
+
 print("all ok, map size en→ru:", l.enToRu.count)

@@ -25,6 +25,7 @@ func correction(keys: [Int], current: Lang, _ l: Layouts, context: Lang? = nil) 
         // («5 шт» не «5 in») — слово неоднозначное, следующее слово на другом языке исправит оба.
         // Русские сокращения, совпадающие с частыми английскими (шт/in, рук/her), без контекста
         // (одна ячейка таблицы) тоже не трогаем; в английской фразе — исправляем.
+        if modelCode(typed, other, current, context: context) { return (other, target) }
         guard shortSwitches(typed, other, current), context != current, context == target || !abbreviation else { return nil }
         return (other, target)
     }
@@ -55,6 +56,16 @@ func afterNumber(_ recent: String) -> Bool {
     while let c = s.last, c.isLetter || c == "." { s.removeLast() }
     if let c = s.last, " \u{00A0}\u{202F}".contains(c) { s.removeLast() }
     return s.last?.isNumber ?? false
+}
+
+/// Буква с цифрой в русской раскладке — латинская модель (ь6 → m6, ф4 → a4): в английской фразе или если
+/// так по-русски слово не начинается (ь, ъ, ы). Обратно не меняем: латиница с цифрой (x5, i7) — обычная модель.
+func modelCode(_ typed: String, _ other: String, _ current: Lang, context: Lang?) -> Bool {
+    let letters = typed.filter(\.isLetter)
+    guard current == .ru, let first = letters.first, typed.contains(where: \.isNumber),
+          typed.allSatisfy({ $0.isLetter || $0.isNumber }), other.allSatisfy({ $0.isLetter || $0.isNumber }),
+          other.filter(\.isLetter).count == letters.count, !commonShort[.ru]!.contains(letters.lowercased()) else { return false }
+    return context == .en || "ьъы".contains(first.lowercased())
 }
 
 /// Язык фразы после слова: исправленное — язык исправления; неоднозначное («руку», «шт») язык
@@ -253,6 +264,11 @@ let commonShort: [Lang: Set<String>] = [
         out own say see she too two use was way who why yes yet you all any big few man men off put run
         set try day end far ask add ago lot top bad buy car cat dog eat fix god job key law low sit
         bye bug log app web
+        act age aim air arm art bag bar bed bet bid bit box boy bus cap cop cry cup cut dad die dry due ear
+        egg eye fat fee fit fly fun gap gas gym hat hip hit hot hug ice ill jet joy kid kit lab lay leg lie
+        lip mad map max mid min mix mom mud nap nor nut odd oil owe pad pal pan pay pen per pie pin pit pop
+        pot pro raw red rid row sad sat saw sea sky son sum sun tag tan tap tax tea ten tie tip toe ton toy
+        van vet via war wax wet win won wow yep zip
         """.split(whereSeparator: \.isWhitespace).map(String.init)),
 ]
 
