@@ -372,11 +372,11 @@ do {
     }
     check(isAmbiguous(keys: ks("руку", .ru), current: .ru, l) ? "да" : "нет", "да")
     check(isAmbiguous(keys: ks("привет", .ru), current: .ru, l) ? "да" : "нет", "нет")
-    let f = phraseFix(prev: ks("руку", .ru), keys: ks("цу", .ru), current: .ru, l, context: nil)
+    let f = phraseFix(prev: [ks("руку", .ru)], keys: ks("цу", .ru), current: .ru, l, context: nil)
     check(f.map { "\($0.erase)|\($0.text)|\($0.typed)|\($0.target)" } ?? "nil", "8|here we|руку цу|en")
-    let g = phraseFix(prev: nil, keys: ks("цу", .ru), current: .ru, l, context: nil)
+    let g = phraseFix(prev: [], keys: ks("цу", .ru), current: .ru, l, context: nil)
     check(g.map { "\($0.erase)|\($0.text)" } ?? "nil", "3|we")                  // без предыдущего — только слово
-    let h = phraseFix(prev: ks("руку", .ru), keys: ks("дай", .ru), current: .ru, l, context: nil)
+    let h = phraseFix(prev: [ks("руку", .ru)], keys: ks("дай", .ru), current: .ru, l, context: nil)
     check(h.map { $0.text } ?? "nil", "nil")                                       // «руку дай» — русская фраза, не трогаем
 
     // Короткое слово посреди фразы на языке раскладки — не трогаем («5 шт»), но помним:
@@ -391,22 +391,48 @@ do {
     check(decide("in", in: .en, context: .ru), "nil")                             // частое английское — никогда
     check(isAmbiguous(keys: ks("шт", .ru), current: .ru, l) ? "да" : "нет", "да")
     check(isAmbiguous(keys: ks("на", .ru), current: .ru, l) ? "да" : "нет", "нет") // частое русское — не сомневаемся
-    let p = phraseFix(prev: ks("шт", .ru), keys: ks("ерут", .ru), current: .ru, l, context: .ru)
+    let p = phraseFix(prev: [ks("шт", .ru)], keys: ks("ерут", .ru), current: .ru, l, context: .ru)
     check(p.map { "\($0.erase)|\($0.text)|\($0.target)" } ?? "nil", "8|in then|en")
-    let p0 = phraseFix(prev: ks("шт", .ru), keys: ks("еру", .ru), current: .ru, l, context: nil)
+    let p0 = phraseFix(prev: [ks("шт", .ru)], keys: ks("еру", .ru), current: .ru, l, context: nil)
     check(p0.map { $0.text } ?? "nil", "in the")                                  // «шт» в начале фразы, дальше английский
-    let q = phraseFix(prev: ks("шт", .ru), keys: ks("купил", .ru), current: .ru, l, context: .ru)
+    let q = phraseFix(prev: [ks("шт", .ru)], keys: ks("купил", .ru), current: .ru, l, context: .ru)
     check(q.map { $0.text } ?? "nil", "nil")                                       // дальше по-русски — «шт» остаётся
+    // после английской фразы два неоднозначных подряд: «apple translate nfr rfr yfib» → «так как наши»
+    let c = phraseFix(prev: [ks("nfr", .en), ks("rfr", .en)], keys: ks("yfib", .en), current: .en, l, context: .en)
+    check(c.map { "\($0.erase)|\($0.text)|\($0.typed)" } ?? "nil", "13|так как наши|nfr rfr yfib")
+    let c1 = phraseFix(prev: [ks("translate", .en), ks("rfr", .en)], keys: ks("yfib", .en), current: .en, l, context: .en)
+    check(c1.map { $0.text } ?? "nil", "как наши")                                // цепочка — только неоднозначные подряд
+    // устойчивые сочетания исправляются сразу, на втором слове, даже посреди фразы на другом языке
+    let sp = phraseFix(prev: [ks("nfr", .en)], keys: ks("rfr", .en), current: .en, l, context: .en)
+    check(sp.map { "\($0.erase)|\($0.text)|\($0.typed)|\($0.target)" } ?? "nil", "8|так как|nfr rfr|ru")
+    let sp2 = phraseFix(prev: [ks("шт", .ru)], keys: ks("еру", .ru), current: .ru, l, context: .ru)
+    check(sp2.map { $0.text } ?? "nil", "in the")
+    let sp3 = phraseFix(prev: [ks("Nfr", .en)], keys: ks("rfr", .en), current: .en, l, context: .en)
+    check(sp3.map { $0.text } ?? "nil", "Так как")                              // регистр как набран
+    check(phraseFix(prev: [], keys: ks("rfr", .en), current: .en, l, context: .en).map { $0.text } ?? "nil", "nil")
+    check(phraseFix(prev: [ks("ifr", .en)], keys: ks("rfr", .en), current: .en, l, context: .en).map { $0.text } ?? "nil", "nil")
+    for p in setPhrases[.ru]!.union(setPhrases[.en]!) {                        // все сочетания — из частых коротких слов
+        check(p.split(separator: " ").allSatisfy { w in commonShort.values.contains { $0.contains(String(w)) } } ? "ok" : p, "ok")
+    }
 }
 do {
     var t = TypingState()
     t.endWord(lang: .ru, ambiguous: true)
-    check(t.ambiguousPrev == nil ? "нет" : "есть", "нет")                          // клавиш не было — нечего помнить
+    check(t.ambiguousPrev.isEmpty ? "нет" : "есть", "нет")                          // клавиш не было — нечего помнить
     _ = t.keyDown(code: 0, key: 0, char: "a", modified: false)
     t.endWord(lang: .ru, ambiguous: true)
-    check(t.ambiguousPrev?.count.description ?? "nil", "1")
+    check(t.ambiguousPrev.first?.count.description ?? "nil", "1")
+    _ = t.keyDown(code: 11, key: 44, char: "b", modified: false)
+    t.endWord(lang: .ru, ambiguous: true)
+    check(t.ambiguousPrev.count.description, "2")                                // цепочка неоднозначных
+    _ = t.keyDown(code: 0, key: 0, char: "a", modified: false)
+    t.punctTyped(",")
+    t.endWord(lang: .ru, ambiguous: true)
+    check(t.ambiguousPrev.count.description, "0")                                // знак после слова рвёт цепочку
+    _ = t.keyDown(code: 0, key: 0, char: "a", modified: false)
+    t.endWord(lang: .ru, ambiguous: true)
     _ = t.keyDown(code: 51, key: 0, char: nil, modified: false)                   // Backspace в предыдущее слово
-    check(t.ambiguousPrev == nil ? "нет" : "есть", "нет")
+    check(t.ambiguousPrev.isEmpty ? "нет" : "есть", "нет")
 }
 
 // Язык фразы после слова: исправленное — язык исправления, неоднозначное («руку», «шт») — не задаёт,

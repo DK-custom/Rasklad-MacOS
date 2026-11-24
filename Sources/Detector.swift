@@ -107,17 +107,37 @@ func isAmbiguous(keys: [Int], current: Lang, _ l: Layouts) -> Bool {
     return isWord(typed, current) && isWord(other, current.other)
 }
 
-/// Исправление слова; если предыдущее слово было неоднозначным, а это явно на другом языке —
-/// исправить оба («руку цу» → «here we»). erase — сколько символов стереть, включая набранные пробелы.
-func phraseFix(prev: [Int]?, keys: [Int], current: Lang, _ l: Layouts, context: Lang?)
+/// Устойчивые сочетания из частых коротких слов: каждое по отдельности есть в обоих языках, а вместе —
+/// явно один язык. Исправляются на втором слове, не дожидаясь третьего.
+let setPhrases: [Lang: Set<String>] = [
+    .ru: ["так как", "так что", "как бы", "что ли", "все же", "всё же", "а то", "и так", "как раз", "раз так",
+          "так же", "то же", "что же", "как же", "да ну", "ну да", "не то", "вот так"],
+    .en: ["in the", "of the", "to the", "on the", "at the", "by the", "for the", "and the", "is it", "it is",
+          "so on", "as if", "if so", "or so", "to be", "of it", "in it", "on it", "at all", "and so"],
+]
+
+/// Исправление слова; если предыдущие слова были неоднозначными, а это явно на другом языке —
+/// исправить все («руку цу» → «here we»). erase — сколько символов стереть, включая набранные пробелы.
+func phraseFix(prev: [[Int]], keys: [Int], current: Lang, _ l: Layouts, context: Lang?)
     -> (erase: Int, text: String, typed: String, target: Lang)? {
-    guard let fix = correction(keys: keys, current: current, l, context: context) else { return nil }
-    let typed = text(keys, l.chars(current))
-    if let prev, fix.target == current.other, isAmbiguous(keys: prev, current: current, l) {
-        return (prev.count + 1 + keys.count + 1, text(prev, l.chars(fix.target)) + " " + fix.text,
-                text(prev, l.chars(current)) + " " + typed, fix.target)
+    // устойчивое сочетание из двух коротких («nfr rfr» → «так как»): сразу, даже посреди фразы на другом языке
+    let target = current.other
+    if let last = prev.last {
+        let pair = text(last, l.chars(target)) + " " + text(keys, l.chars(target))
+        if pair.count == last.count + keys.count + 1, setPhrases[target]!.contains(pair.lowercased()) {
+            return (last.count + keys.count + 2, pair, text(last, l.chars(current)) + " " + text(keys, l.chars(current)), target)
+        }
     }
-    return (keys.count + 1, fix.text, typed, fix.target)
+    guard let fix = correction(keys: keys, current: current, l, context: context) else { return nil }
+    // неоднозначные слова прямо перед этим, подряд («nfr rfr yfib» → «так как наши»)
+    var words: [[Int]] = []
+    if fix.target == current.other {
+        for w in prev.reversed() { guard isAmbiguous(keys: w, current: current, l) else { break }; words.insert(w, at: 0) }
+    }
+    let erase = words.reduce(keys.count + 1) { $0 + $1.count + 1 }
+    let fixed = (words.map { text($0, l.chars(fix.target)) } + [fix.text]).joined(separator: " ")
+    let typed = (words.map { text($0, l.chars(current)) } + [text(keys, l.chars(current))]).joined(separator: " ")
+    return (erase, fixed, typed, fix.target)
 }
 
 /// Слово набрано частью в одной раскладке, частью в другой («ска;b» — «скажи», где «жи» уже в EN):
@@ -394,7 +414,7 @@ struct TypingState {
     /// Язык слов текущей фразы — для слов, которые есть в обоих языках. Enter, клик, стрелки сбрасывают.
     var phraseLang: Lang?
     /// Клавиши предыдущего слова, если оно было неоднозначным и сразу за ним идёт текущее.
-    private(set) var ambiguousPrev: [Int]?
+    private(set) var ambiguousPrev: [[Int]] = []
     /// Только что законченное слово — пока после пробела ничего не нажимали (для ручной правки клавишей
     /// исправления). Любая клавиша, клик, Enter, Backspace — забыть: курсор мог уйти.
     private(set) var lastWord: (keys: [Int], langs: [Lang?])?
@@ -409,7 +429,7 @@ struct TypingState {
         switch code {
         case 49: return .wordEnd                                       // пробел
         case 51:                                                       // Backspace
-            if keys.isEmpty { ambiguousPrev = nil }                    // стирают уже предыдущее слово
+            if keys.isEmpty { ambiguousPrev = [] }                     // стирают уже предыдущее слово
             if !punctAfter.isEmpty { punctAfter.removeLast() }
             else if !keys.isEmpty { keys.removeLast(); langs.removeLast() }
             if !recent.isEmpty { recent.removeLast() }
@@ -418,7 +438,7 @@ struct TypingState {
             keys.removeAll()
             langs.removeAll()
             phraseLang = nil
-            ambiguousPrev = nil
+            ambiguousPrev = []
             remember(code == 36 ? "\n" : "\t")
         case 0...50:
             if !punctAfter.isEmpty { punctAfter = ""; keys.removeAll(); langs.removeAll() } // «a,b» — уже не то слово
@@ -433,8 +453,9 @@ struct TypingState {
     /// `lang` — на каком языке оказалось слово (nil — не знаем, язык фразы прежний).
     /// `ambiguous` — слово есть в обоих языках: следующее слово может исправить и его.
     mutating func endWord(lang: Lang? = nil, ambiguous: Bool = false) {
+        // цепочка неоднозначных подряд (не больше 4); знак после слова её рвёт — его не перенабрать
+        ambiguousPrev = ambiguous && !keys.isEmpty && punctAfter.isEmpty ? Array((ambiguousPrev + [keys]).suffix(4)) : []
         punctAfter = ""
-        ambiguousPrev = ambiguous && !keys.isEmpty ? keys : nil
         lastWord = keys.isEmpty ? nil : (keys, langs)
         keys.removeAll()
         langs.removeAll()
@@ -457,7 +478,7 @@ struct TypingState {
         remember(String(ch))
         if !keys.isEmpty { punctAfter.append(ch); return } // слово перед знаком — проверим на пробеле
         langs.removeAll()
-        ambiguousPrev = nil
+        ambiguousPrev = []
     }
 
     /// Пробел перед только что набранным знаком убран — так же и в недавнем тексте. Сам знак из буфера
@@ -478,7 +499,7 @@ struct TypingState {
         langs.removeAll()
         recent = ""
         phraseLang = nil
-        ambiguousPrev = nil
+        ambiguousPrev = []
     }
 
     private mutating func remember(_ s: String) {
